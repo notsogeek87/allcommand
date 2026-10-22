@@ -29,6 +29,20 @@ import javax.net.ssl.SSLSocket
 class AndroidTvDriver : DeviceDriver {
     override val type: DeviceType = DeviceType.ANDROID_TV
 
+    /** Identité jetable des sondes : générée une fois, la création d'une clé RSA coûtant de l'ordre de la seconde. */
+    private val probeIdentity by lazy { AndroidTvIdentity.generate() }
+
+    /** Le port 6466 d'une Android TV complète une poignée de main TLS ; un autre appareil la refuse ou ne répond pas. */
+    override suspend fun probe(host: String): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                TvLink.open(host, AndroidTvMessages.REMOTE_PORT, probeIdentity).close()
+                true
+            } catch (_: Exception) {
+                false
+            }
+        }
+
     override suspend fun startPairing(host: String): PairingSession =
         withContext(Dispatchers.IO) {
             val identity = AndroidTvIdentity.generate()

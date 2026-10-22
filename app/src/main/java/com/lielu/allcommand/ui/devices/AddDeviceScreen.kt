@@ -23,9 +23,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -40,11 +37,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.lielu.allcommand.device.DeviceType
 
-/** Ajout d'un appareil : type, nom, adresse, puis appairage par le code affiché sur l'appareil. */
+/** Ajout d'appareils : la liste de ceux trouvés sur le Wi-Fi, un nom, puis le code affiché sur l'appareil. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddDeviceScreen(
@@ -91,7 +89,7 @@ fun AddDeviceScreen(
                 AddDeviceStep.Working -> CircularProgressIndicator()
                 AddDeviceStep.AwaitingCode ->
                     CodeEntry(
-                        hint = type.pairingHint,
+                        type = batch?.device?.type ?: type,
                         batch = batch,
                         onSubmit = viewModel::submitCode,
                         onSkip = viewModel::skipCurrent,
@@ -99,12 +97,10 @@ fun AddDeviceScreen(
                     )
                 else ->
                     DeviceForm(
-                        type = type,
                         name = name,
                         host = host,
                         scanning = scanning,
                         found = found,
-                        isAvailable = viewModel.isAvailable(type),
                         viewModel = viewModel,
                     )
             }
@@ -113,80 +109,17 @@ fun AddDeviceScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DeviceForm(
-    type: DeviceType,
     name: String,
     host: String,
     scanning: Boolean,
     found: List<FoundDevice>?,
-    isAvailable: Boolean,
     viewModel: AddDeviceViewModel,
 ) {
-    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        DeviceType.entries.forEachIndexed { index, option ->
-            SegmentedButton(
-                selected = type == option,
-                onClick = { viewModel.onTypeChange(option) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = DeviceType.entries.size),
-            ) {
-                Text(option.label)
-            }
-        }
-    }
-    OutlinedTextField(
-        value = name,
-        onValueChange = viewModel::onNameChange,
-        label = { Text("Nom (ex. Salon)") },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-    )
-    DiscoveryPanel(
-        type = type,
-        scanning = scanning,
-        found = found,
-        selected = host,
-        onSelect = viewModel::select,
-        onRescan = viewModel::scan,
-        onAddAll = viewModel::addAll,
-    )
-    OutlinedTextField(
-        value = host,
-        onValueChange = viewModel::onHostChange,
-        label = { Text("Adresse IP (remplie si trouvée ci-dessus)") },
-        placeholder = { Text("192.168.1.20") },
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
-        modifier = Modifier.fillMaxWidth(),
-    )
-    if (isAvailable) {
-        Text(type.pairingHint, style = MaterialTheme.typography.bodyMedium)
-        Button(onClick = viewModel::startPairing, modifier = Modifier.fillMaxWidth()) { Text("Appairer") }
-    } else {
-        Text(
-            "Le pilotage de ce type d'appareil n'est pas encore pris en charge.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { Text("Appairer") }
-    }
-}
-
-/** Évite de deviner l'IP : propose les appareils trouvés sur le Wi-Fi, ou dit où la lire sur la télé. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun DiscoveryPanel(
-    type: DeviceType,
-    scanning: Boolean,
-    found: List<FoundDevice>?,
-    selected: String,
-    onSelect: (FoundDevice) -> Unit,
-    onRescan: () -> Unit,
-    onAddAll: () -> Unit,
-) {
     Text(
-        "Allumez la télé et connectez ce téléphone au même Wi-Fi : l'adresse se trouve toute seule.",
+        "Allumez vos appareils et connectez ce téléphone au même Wi-Fi : ils s'affichent ci-dessous.",
         style = MaterialTheme.typography.bodyMedium,
     )
     when {
@@ -195,63 +128,97 @@ private fun DiscoveryPanel(
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 Text("Recherche sur le réseau…")
             }
-        found.isNullOrEmpty() -> {
+        found.isNullOrEmpty() ->
             Text(
-                "Aucun appareil trouvé. Vérifiez qu'elle est allumée et sur le même Wi-Fi, puis relancez la " +
-                    "recherche, ou saisissez l'adresse à la main. ${type.ipHelp}",
+                "Aucun appareil compatible trouvé. Vérifiez qu'il est allumé et sur le même Wi-Fi, puis relancez " +
+                    "la recherche, ou saisissez son adresse IP à la main ci-dessous.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            TextButton(onClick = onRescan) { Text("Relancer la recherche") }
-        }
         else -> {
-            Text("Appareils trouvés (touchez pour choisir) :", style = MaterialTheme.typography.labelLarge)
+            Text("Appareils compatibles (touchez pour choisir) :", style = MaterialTheme.typography.labelLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 found.forEach { device ->
                     FilterChip(
-                        selected = device.host == selected,
-                        onClick = { onSelect(device) },
+                        selected = device.host == host,
+                        onClick = { viewModel.select(device) },
                         label = { Text(device.title) },
                     )
                 }
             }
             if (found.size > 1) {
-                Button(onClick = onAddAll, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = viewModel::addAll, modifier = Modifier.fillMaxWidth()) {
                     Text("Tout ajouter (${found.size} appareils)")
                 }
                 Text(
-                    "Chaque télé affichera son code, à saisir l'un après l'autre.",
+                    "Chaque appareil affichera son code, à saisir l'un après l'autre.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = onRescan) { Text("Relancer la recherche") }
         }
     }
+    if (!scanning) TextButton(onClick = viewModel::scan) { Text("Relancer la recherche") }
+
+    OutlinedTextField(
+        value = name,
+        onValueChange = viewModel::onNameChange,
+        label = { Text("Nom (ex. Salon)") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = host,
+        onValueChange = viewModel::onHostChange,
+        label = { Text("Adresse IP (remplie en choisissant un appareil)") },
+        placeholder = { Text("192.168.1.20") },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    Button(
+        onClick = viewModel::startPairing,
+        enabled = host.isNotBlank(),
+        modifier = Modifier.fillMaxWidth(),
+    ) { Text("Appairer") }
 }
 
 @Composable
 private fun CodeEntry(
-    hint: String,
+    type: DeviceType,
     batch: BatchProgress?,
     onSubmit: (String) -> Unit,
     onSkip: () -> Unit,
     onCancel: () -> Unit,
 ) {
     var code by remember(batch?.position) { mutableStateOf("") }
+    // Une Android TV affiche un code de 6 caractères hexadécimaux (« 25EC51 ») ; une Titan OS 4 chiffres.
+    val hexadecimal = type == DeviceType.ANDROID_TV
     batch?.let {
         Text(
             "Appareil ${it.position}/${it.total} : ${it.device.title}",
             style = MaterialTheme.typography.titleMedium,
         )
     }
-    Text(hint, style = MaterialTheme.typography.bodyLarge)
+    Text(type.pairingHint, style = MaterialTheme.typography.bodyLarge)
     OutlinedTextField(
         value = code,
-        onValueChange = { code = it.filter(Char::isDigit).take(MAX_CODE_LENGTH) },
+        onValueChange = { typed ->
+            code =
+                if (hexadecimal) {
+                    typed.uppercase().filter { it in HEX_DIGITS }.take(HEX_CODE_LENGTH)
+                } else {
+                    typed.filter(Char::isDigit).take(DIGIT_CODE_LENGTH)
+                }
+        },
         label = { Text("Code affiché sur la télé") },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+        keyboardOptions =
+            if (hexadecimal) {
+                KeyboardOptions(keyboardType = KeyboardType.Ascii, capitalization = KeyboardCapitalization.Characters)
+            } else {
+                KeyboardOptions(keyboardType = KeyboardType.NumberPassword)
+            },
         modifier = Modifier.fillMaxWidth(),
     )
     Button(onClick = { onSubmit(code) }, modifier = Modifier.fillMaxWidth()) { Text("Valider") }
@@ -259,4 +226,6 @@ private fun CodeEntry(
     TextButton(onClick = onCancel) { Text(if (batch != null) "Tout annuler" else "Annuler") }
 }
 
-private const val MAX_CODE_LENGTH = 8
+private const val HEX_DIGITS = "0123456789ABCDEF"
+private const val HEX_CODE_LENGTH = 6
+private const val DIGIT_CODE_LENGTH = 4

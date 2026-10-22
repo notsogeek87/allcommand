@@ -9,6 +9,7 @@ import com.lielu.allcommand.device.RemoteConnection
 import com.lielu.allcommand.device.RemoteKey
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
 import java.util.UUID
 
@@ -22,6 +23,18 @@ internal object TitanOsCredentials {
 /** Pilote des Philips Titan OS : MQTT v5 sur TLS, appairage par code à 4 chiffres. */
 class TitanOsDriver : DeviceDriver {
     override val type: DeviceType = DeviceType.TITAN_OS
+
+    /** Une Titan OS accepte la connexion MQTT anonyme (c'est ainsi que l'appairage commence) ; un autre serveur non. */
+    override suspend fun probe(host: String): Boolean {
+        val client = TitanOsClient(host, PinnedTrust(pinnedKey = null), username = null, password = null)
+        return try {
+            withTimeoutOrNull(PROBE_TIMEOUT_MILLIS) { client.connect() } != null
+        } catch (_: Exception) {
+            false
+        } finally {
+            client.close()
+        }
+    }
 
     override suspend fun startPairing(host: String): PairingSession {
         val trust = PinnedTrust(pinnedKey = null)
@@ -39,6 +52,10 @@ class TitanOsDriver : DeviceDriver {
     }
 
     override fun connect(device: Device): RemoteConnection = TitanOsConnection(device)
+
+    private companion object {
+        const val PROBE_TIMEOUT_MILLIS = 4_000L
+    }
 }
 
 private class TitanOsPairingSession(

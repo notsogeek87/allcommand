@@ -108,9 +108,19 @@ class AddDeviceViewModel(
                     val types = DeviceType.entries.filter(::isAvailable)
                     val devices =
                         types
-                            .map { type -> async { scanner.scan(type.discoveryPort).map { FoundDevice(type, it) } } }
-                            .awaitAll()
+                            .map { type ->
+                                async {
+                                    val hosts = scanner.scan(type.discoveryPort)
+                                    // Un port ouvert ne prouve rien : on écarte box, aspirateurs, etc.
+                                    hosts
+                                        .map { host -> async { host.takeIf { drivers.forType(type).probe(it) } } }
+                                        .awaitAll()
+                                        .filterNotNull()
+                                        .map { FoundDevice(type, it) }
+                                }
+                            }.awaitAll()
                             .flatten()
+                            .sortedBy { it.host }
                     val names = namer.names(devices.map { it.host })
                     _found.value = devices.map { it.copy(name = names[it.host]) }
                 } finally {
@@ -195,11 +205,6 @@ class AddDeviceViewModel(
 
     fun isAvailable(type: DeviceType): Boolean = drivers.forType(type).isAvailable
 
-    fun onTypeChange(value: DeviceType) {
-        _type.value = value
-        _error.value = null
-    }
-
     fun onNameChange(value: String) {
         _name.value = value
     }
@@ -208,8 +213,14 @@ class AddDeviceViewModel(
         _host.value = value
     }
 
+    /** Type de l'appareil à cette adresse : celui trouvé par le scan, sinon le premier pilote qui le reconnaît. */
+    private suspend fun detectType(host: String): DeviceType {
+        _found.value?.firstOrNull { it.host == host }?.let { return it.type }
+        val candidates = DeviceType.entries.filter(::isAvailable)
+        return candidates.firstOrNull { drivers.forType(it).probe(host) } ?: candidates.first()
+    }
+
     fun startPairing() {
-        val type = _type.value
         val host = _host.value.trim()
         if (!HOST_FORMAT.matches(host)) {
             _error.value = "Saisissez l'adresse IP de l'appareil, par exemple 192.168.1.20."
@@ -219,6 +230,8 @@ class AddDeviceViewModel(
         _step.value = AddDeviceStep.Working
         viewModelScope.launch {
             try {
+                val type = detectType(host)
+                _type.value = type
                 session = drivers.forType(type).startPairing(host)
                 _step.value = AddDeviceStep.AwaitingCode
             } catch (e: Exception) {

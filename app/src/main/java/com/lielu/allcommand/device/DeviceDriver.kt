@@ -11,6 +11,12 @@ interface DeviceDriver {
     /** Faux tant que le protocole du type n'est pas branché : l'interface le dit au lieu de proposer un échec. */
     val isAvailable: Boolean get() = true
 
+    /**
+     * Vrai si [host] est bien un appareil de ce type. Un port ouvert ne suffit pas (box, aspirateur connecté et
+     * imprimante en ouvrent aussi) : le scan n'affiche que les appareils que ce pilote sait réellement piloter.
+     */
+    suspend fun probe(host: String): Boolean = true
+
     /** Ouvre l'appairage : l'appareil affiche un code que l'utilisateur saisit ensuite via [PairingSession.complete]. */
     suspend fun startPairing(host: String): PairingSession
 
