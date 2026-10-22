@@ -2,9 +2,13 @@ package com.lielu.allcommand.ui.devices
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -13,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +37,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
@@ -50,6 +56,8 @@ fun AddDeviceScreen(
     val name by viewModel.name.collectAsState()
     val host by viewModel.host.collectAsState()
     val step by viewModel.step.collectAsState()
+    val scanning by viewModel.scanning.collectAsState()
+    val found by viewModel.found.collectAsState()
     val error by viewModel.error.collectAsState()
 
     LaunchedEffect(step) {
@@ -91,6 +99,8 @@ fun AddDeviceScreen(
                         type = type,
                         name = name,
                         host = host,
+                        scanning = scanning,
+                        found = found,
                         isAvailable = viewModel.isAvailable(type),
                         viewModel = viewModel,
                     )
@@ -100,12 +110,14 @@ fun AddDeviceScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun DeviceForm(
     type: DeviceType,
     name: String,
     host: String,
+    scanning: Boolean,
+    found: List<String>?,
     isAvailable: Boolean,
     viewModel: AddDeviceViewModel,
 ) {
@@ -127,10 +139,18 @@ private fun DeviceForm(
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
+    DiscoveryPanel(
+        type = type,
+        scanning = scanning,
+        found = found,
+        selected = host,
+        onSelect = viewModel::onHostChange,
+        onRescan = viewModel::scan,
+    )
     OutlinedTextField(
         value = host,
         onValueChange = viewModel::onHostChange,
-        label = { Text("Adresse IP de l'appareil") },
+        label = { Text("Adresse IP (remplie si trouvée ci-dessus)") },
         placeholder = { Text("192.168.1.20") },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
@@ -146,6 +166,48 @@ private fun DeviceForm(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Button(onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth()) { Text("Appairer") }
+    }
+}
+
+/** Évite de deviner l'IP : propose les appareils trouvés sur le Wi-Fi, ou dit où la lire sur la télé. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun DiscoveryPanel(
+    type: DeviceType,
+    scanning: Boolean,
+    found: List<String>?,
+    selected: String,
+    onSelect: (String) -> Unit,
+    onRescan: () -> Unit,
+) {
+    Text(
+        "Allumez la télé et connectez ce téléphone au même Wi-Fi : l'adresse se trouve toute seule.",
+        style = MaterialTheme.typography.bodyMedium,
+    )
+    when {
+        scanning ->
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                Text("Recherche sur le réseau…")
+            }
+        found.isNullOrEmpty() -> {
+            Text(
+                "Aucun appareil trouvé. Vérifiez qu'elle est allumée et sur le même Wi-Fi, puis relancez la " +
+                    "recherche, ou saisissez l'adresse à la main. ${type.ipHelp}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            TextButton(onClick = onRescan) { Text("Relancer la recherche") }
+        }
+        else -> {
+            Text("Appareils trouvés (touchez pour choisir) :", style = MaterialTheme.typography.labelLarge)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                found.forEach { ip ->
+                    FilterChip(selected = ip == selected, onClick = { onSelect(ip) }, label = { Text(ip) })
+                }
+            }
+            TextButton(onClick = onRescan) { Text("Relancer la recherche") }
+        }
     }
 }
 

@@ -6,8 +6,11 @@ import com.lielu.allcommand.data.devices.DeviceRepository
 import com.lielu.allcommand.device.Device
 import com.lielu.allcommand.device.DeviceDrivers
 import com.lielu.allcommand.device.DeviceException
+import com.lielu.allcommand.device.DeviceScanner
 import com.lielu.allcommand.device.DeviceType
+import com.lielu.allcommand.device.LanScanner
 import com.lielu.allcommand.device.PairingSession
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -31,6 +34,7 @@ sealed interface AddDeviceStep {
 class AddDeviceViewModel(
     private val repository: DeviceRepository,
     private val drivers: DeviceDrivers,
+    private val scanner: DeviceScanner = LanScanner(),
 ) : ViewModel() {
     private val _type = MutableStateFlow(DeviceType.TITAN_OS)
     val type: StateFlow<DeviceType> = _type
@@ -47,13 +51,42 @@ class AddDeviceViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    private val _scanning = MutableStateFlow(false)
+    val scanning: StateFlow<Boolean> = _scanning
+
+    /** Adresses trouvées sur le réseau pour le type choisi ; `null` tant qu'aucune recherche n'a abouti. */
+    private val _found = MutableStateFlow<List<String>?>(null)
+    val found: StateFlow<List<String>?> = _found
+
     private var session: PairingSession? = null
+    private var scanJob: Job? = null
+
+    init {
+        scan()
+    }
+
+    /** Cherche les appareils du type choisi sur le Wi-Fi, pour éviter de taper leur adresse. */
+    fun scan() {
+        scanJob?.cancel()
+        val type = _type.value
+        _found.value = null
+        _scanning.value = true
+        scanJob =
+            viewModelScope.launch {
+                try {
+                    _found.value = scanner.scan(type.discoveryPort)
+                } finally {
+                    _scanning.value = false
+                }
+            }
+    }
 
     fun isAvailable(type: DeviceType): Boolean = drivers.forType(type).isAvailable
 
     fun onTypeChange(value: DeviceType) {
         _type.value = value
         _error.value = null
+        scan()
     }
 
     fun onNameChange(value: String) {
@@ -111,6 +144,7 @@ class AddDeviceViewModel(
     }
 
     override fun onCleared() {
+        scanJob?.cancel()
         session?.cancel()
     }
 
