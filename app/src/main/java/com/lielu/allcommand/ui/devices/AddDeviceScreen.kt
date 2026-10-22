@@ -211,7 +211,7 @@ private fun DiscoveryPanel(
                     FilterChip(
                         selected = device.host == selected,
                         onClick = { onSelect(device) },
-                        label = { Text("${device.type.label} · ${device.host}") },
+                        label = { Text(device.title) },
                     )
                 }
             }
@@ -241,7 +241,7 @@ private fun CodeEntry(
     var code by remember(batch?.position) { mutableStateOf("") }
     batch?.let {
         Text(
-            "Appareil ${it.position}/${it.total} : ${it.device.type.label} · ${it.device.host}",
+            "Appareil ${it.position}/${it.total} : ${it.device.title}",
             style = MaterialTheme.typography.titleMedium,
         )
     }

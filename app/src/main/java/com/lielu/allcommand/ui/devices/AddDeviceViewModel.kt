@@ -6,6 +6,7 @@ import com.lielu.allcommand.data.devices.DeviceRepository
 import com.lielu.allcommand.device.Device
 import com.lielu.allcommand.device.DeviceDrivers
 import com.lielu.allcommand.device.DeviceException
+import com.lielu.allcommand.device.DeviceNamer
 import com.lielu.allcommand.device.DeviceScanner
 import com.lielu.allcommand.device.DeviceType
 import com.lielu.allcommand.device.LanScanner
@@ -23,7 +24,12 @@ import java.util.UUID
 data class FoundDevice(
     val type: DeviceType,
     val host: String,
-)
+    /** Nom annoncé par l'appareil (« Salon »…), si on l'a trouvé. */
+    val name: String? = null,
+) {
+    /** Ce qu'on montre à l'utilisateur : le nom s'il existe, sinon le type, toujours suivi de l'adresse. */
+    val title: String get() = "${name ?: type.label} · $host"
+}
 
 /** Ajout en série des appareils trouvés : position courante, [total] et appareils déjà traités. */
 data class BatchProgress(
@@ -50,6 +56,7 @@ sealed interface AddDeviceStep {
 class AddDeviceViewModel(
     private val repository: DeviceRepository,
     private val drivers: DeviceDrivers,
+    private val namer: DeviceNamer,
     private val scanner: DeviceScanner = LanScanner(),
 ) : ViewModel() {
     private val _type = MutableStateFlow(DeviceType.TITAN_OS)
@@ -78,6 +85,7 @@ class AddDeviceViewModel(
     val batch: StateFlow<BatchProgress?> = _batch
 
     private var queue: List<FoundDevice> = emptyList()
+    private var lastSuggestedName: String? = null
     private var queueIndex = 0
     private var addedCount = 0
     private val failedHosts = mutableListOf<String>()
@@ -98,11 +106,13 @@ class AddDeviceViewModel(
             viewModelScope.launch {
                 try {
                     val types = DeviceType.entries.filter(::isAvailable)
-                    _found.value =
+                    val devices =
                         types
                             .map { type -> async { scanner.scan(type.discoveryPort).map { FoundDevice(type, it) } } }
                             .awaitAll()
                             .flatten()
+                    val names = namer.names(devices.map { it.host })
+                    _found.value = devices.map { it.copy(name = names[it.host]) }
                 } finally {
                     _scanning.value = false
                 }
@@ -112,6 +122,10 @@ class AddDeviceViewModel(
     fun select(device: FoundDevice) {
         _type.value = device.type
         _host.value = device.host
+        if (_name.value.isBlank() || _name.value == lastSuggestedName) {
+            _name.value = device.name.orEmpty()
+            lastSuggestedName = device.name
+        }
         _error.value = null
     }
 
@@ -224,7 +238,16 @@ class AddDeviceViewModel(
                 val credentials = pairing.complete(code)
                 session = null
                 val host = _host.value.trim()
-                val name = if (inBatch) "${type.label} $host" else _name.value.trim().ifEmpty { type.label }
+                val name =
+                    if (inBatch) {
+                        _batch.value
+                            ?.device
+                            ?.let {
+                                it.name ?: "${type.label} ${it.host}"
+                            }.orEmpty()
+                    } else {
+                        _name.value.trim().ifEmpty { type.label }
+                    }
                 repository.add(Device(UUID.randomUUID().toString(), name, type, host, credentials))
                 if (inBatch) {
                     addedCount++

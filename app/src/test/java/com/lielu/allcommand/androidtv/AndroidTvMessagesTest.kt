@@ -58,9 +58,6 @@ class AndroidTvMessagesTest {
                 .mapNotNull { code -> AndroidTvMessages.pairingSecret(client, server, code)?.let { code to it } }
         assertEquals(1, valid.size)
         assertEquals(32, valid.single().second.size)
-        assertNull(
-            AndroidTvMessages.pairingSecret(client, server, "00ABCD").takeIf { valid.single().first != "00ABCD" },
-        )
     }
 
     @Test

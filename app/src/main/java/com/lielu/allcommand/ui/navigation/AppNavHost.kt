@@ -84,7 +84,13 @@ fun AppNavHost(container: AppContainer) {
                     entry,
                     factory =
                         viewModelFactory {
-                            initializer { AddDeviceViewModel(container.deviceRepository, container.deviceDrivers) }
+                            initializer {
+                                AddDeviceViewModel(
+                                    container.deviceRepository,
+                                    container.deviceDrivers,
+                                    container.deviceNamer,
+                                )
+                            }
                         },
                 )
             AddDeviceScreen(
