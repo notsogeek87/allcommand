@@ -58,6 +58,7 @@ fun AddDeviceScreen(
     val step by viewModel.step.collectAsState()
     val scanning by viewModel.scanning.collectAsState()
     val found by viewModel.found.collectAsState()
+    val batch by viewModel.batch.collectAsState()
     val error by viewModel.error.collectAsState()
 
     LaunchedEffect(step) {
@@ -91,7 +92,9 @@ fun AddDeviceScreen(
                 AddDeviceStep.AwaitingCode ->
                     CodeEntry(
                         hint = type.pairingHint,
+                        batch = batch,
                         onSubmit = viewModel::submitCode,
+                        onSkip = viewModel::skipCurrent,
                         onCancel = viewModel::cancelPairing,
                     )
                 else ->
@@ -117,7 +120,7 @@ private fun DeviceForm(
     name: String,
     host: String,
     scanning: Boolean,
-    found: List<String>?,
+    found: List<FoundDevice>?,
     isAvailable: Boolean,
     viewModel: AddDeviceViewModel,
 ) {
@@ -144,8 +147,9 @@ private fun DeviceForm(
         scanning = scanning,
         found = found,
         selected = host,
-        onSelect = viewModel::onHostChange,
+        onSelect = viewModel::select,
         onRescan = viewModel::scan,
+        onAddAll = viewModel::addAll,
     )
     OutlinedTextField(
         value = host,
@@ -175,10 +179,11 @@ private fun DeviceForm(
 private fun DiscoveryPanel(
     type: DeviceType,
     scanning: Boolean,
-    found: List<String>?,
+    found: List<FoundDevice>?,
     selected: String,
-    onSelect: (String) -> Unit,
+    onSelect: (FoundDevice) -> Unit,
     onRescan: () -> Unit,
+    onAddAll: () -> Unit,
 ) {
     Text(
         "Allumez la télé et connectez ce téléphone au même Wi-Fi : l'adresse se trouve toute seule.",
@@ -202,9 +207,23 @@ private fun DiscoveryPanel(
         else -> {
             Text("Appareils trouvés (touchez pour choisir) :", style = MaterialTheme.typography.labelLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                found.forEach { ip ->
-                    FilterChip(selected = ip == selected, onClick = { onSelect(ip) }, label = { Text(ip) })
+                found.forEach { device ->
+                    FilterChip(
+                        selected = device.host == selected,
+                        onClick = { onSelect(device) },
+                        label = { Text("${device.type.label} · ${device.host}") },
+                    )
                 }
+            }
+            if (found.size > 1) {
+                Button(onClick = onAddAll, modifier = Modifier.fillMaxWidth()) {
+                    Text("Tout ajouter (${found.size} appareils)")
+                }
+                Text(
+                    "Chaque télé affichera son code, à saisir l'un après l'autre.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             TextButton(onClick = onRescan) { Text("Relancer la recherche") }
         }
@@ -214,10 +233,18 @@ private fun DiscoveryPanel(
 @Composable
 private fun CodeEntry(
     hint: String,
+    batch: BatchProgress?,
     onSubmit: (String) -> Unit,
+    onSkip: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    var code by remember { mutableStateOf("") }
+    var code by remember(batch?.position) { mutableStateOf("") }
+    batch?.let {
+        Text(
+            "Appareil ${it.position}/${it.total} : ${it.device.type.label} · ${it.device.host}",
+            style = MaterialTheme.typography.titleMedium,
+        )
+    }
     Text(hint, style = MaterialTheme.typography.bodyLarge)
     OutlinedTextField(
         value = code,
@@ -228,7 +255,8 @@ private fun CodeEntry(
         modifier = Modifier.fillMaxWidth(),
     )
     Button(onClick = { onSubmit(code) }, modifier = Modifier.fillMaxWidth()) { Text("Valider") }
-    TextButton(onClick = onCancel) { Text("Annuler") }
+    if (batch != null) TextButton(onClick = onSkip) { Text("Passer cet appareil") }
+    TextButton(onClick = onCancel) { Text(if (batch != null) "Tout annuler" else "Annuler") }
 }
 
 private const val MAX_CODE_LENGTH = 8
