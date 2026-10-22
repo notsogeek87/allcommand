@@ -23,7 +23,7 @@ enum class DeviceType(
     ANDROID_TV(
         storageId = "android_tv",
         label = "Android TV",
-        pairingHint = "Un code va s'afficher sur la télé.",
+        pairingHint = "Un code à 6 caractères va s'afficher sur la télé.",
         discoveryPort = 6466,
         ipHelp = "Sur la télé : Paramètres > Réseau et Internet > votre Wi-Fi.",
     ),

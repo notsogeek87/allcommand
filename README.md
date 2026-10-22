@@ -7,7 +7,7 @@ Télécommande Android pour plusieurs appareils (Kotlin, Jetpack Compose), issue
 | Type | État |
 | --- | --- |
 | **Philips Titan OS** (ex. 55PUS8009) | Appairage par code à 4 chiffres affiché sur la télé, puis touches via MQTT v5 sur TLS (port 8883). Protocole validé sur une télé réelle depuis un script Python ; le code Kotlin n'est validé que par la CI. |
-| **Android TV** | Prévu (protocole Android TV Remote v2, ports 6466/6467) : proposé dans l'interface mais pas encore actif. |
+| **Android TV** | Protocole Android TV Remote v2 : appairage par code à 6 caractères (port 6467), touches sur le port 6466. Non encore validé sur une vraie télé. |
 
 Les secrets d'appairage restent dans le DataStore de l'app : ils sont exclus de la sauvegarde JSON et de
 l'Auto Backup Android. Après une restauration, les appareils reviennent « à appairer ».
