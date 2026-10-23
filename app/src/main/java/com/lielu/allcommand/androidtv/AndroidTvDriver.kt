@@ -113,6 +113,15 @@ private class AndroidTvConnection(
         lock.withLock { withContext(Dispatchers.IO) { ensureLink() } }
     }
 
+    override suspend fun reconnect() {
+        lock.withLock {
+            withContext(Dispatchers.IO) {
+                reset()
+                ensureLink()
+            }
+        }
+    }
+
     override suspend fun send(key: RemoteKey) {
         val frame = AndroidTvMessages.remoteKey(key)
         lock.withLock {

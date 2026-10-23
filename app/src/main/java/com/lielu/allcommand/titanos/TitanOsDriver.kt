@@ -112,6 +112,13 @@ private class TitanOsConnection(
         lock.withLock { ensureClient() }
     }
 
+    override suspend fun reconnect() {
+        lock.withLock {
+            resetClient()
+            ensureClient()
+        }
+    }
+
     override suspend fun send(key: RemoteKey) {
         val payload = JSONObject().put("key_code", key.titanKeyCode())
         lock.withLock {

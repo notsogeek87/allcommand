@@ -19,6 +19,9 @@ import kotlinx.coroutines.launch
 /** État de la liaison avec l'appareil, montré dans l'en-tête. */
 enum class ConnectionState {
     CONNECTING,
+
+    /** Retour dans l'app : la liaison est refaite (Android a pu la couper pendant l'absence). */
+    RECONNECTING,
     CONNECTED,
     OFFLINE,
 }
@@ -63,6 +66,33 @@ class RemoteViewModel(
         }
     }
 
+    /** Instant où l'app est passée en arrière-plan ; `null` tant qu'elle est au premier plan. */
+    private var backgroundedAt: Long? = null
+
+    fun onBackgrounded() {
+        backgroundedAt = System.nanoTime()
+    }
+
+    /**
+     * Au retour dans l'app, refait la liaison si l'absence a duré : les touches pressées entre-temps attendent
+     * la fin de la reconnexion (la connexion les sérialise) et ne sont pas perdues.
+     */
+    fun onForegrounded() {
+        val since = backgroundedAt ?: return
+        backgroundedAt = null
+        if (System.nanoTime() - since < RECONNECT_AFTER_NANOS) return
+        val device = _device.value?.takeIf { it.isPaired } ?: return
+        _connection.value = ConnectionState.RECONNECTING
+        viewModelScope.launch {
+            _connection.value =
+                if (runCatching { connections.get(device).reconnect() }.isSuccess) {
+                    ConnectionState.CONNECTED
+                } else {
+                    ConnectionState.OFFLINE
+                }
+        }
+    }
+
     fun onKey(key: RemoteKey) = run { it.send(key) }
 
     fun onText(text: String) = run { it.sendText(text) }
@@ -94,6 +124,11 @@ class RemoteViewModel(
                 _message.value = (e as? DeviceException)?.message ?: "Erreur inattendue : ${e.message}"
             }
         }
+    }
+
+    private companion object {
+        /** En deçà, un simple détour (notification, changement d'app éclair) ne justifie pas de reconnecter. */
+        const val RECONNECT_AFTER_NANOS = 5_000_000_000L
     }
 
     private fun connection(): RemoteConnection? {

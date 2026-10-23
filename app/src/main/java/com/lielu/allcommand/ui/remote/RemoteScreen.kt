@@ -46,6 +46,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -80,6 +81,8 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import com.lielu.allcommand.device.RemoteKey
 import com.lielu.allcommand.ui.haptics.HapticKind
 import com.lielu.allcommand.ui.haptics.rememberHaptics
@@ -127,18 +130,25 @@ fun RemoteScreen(
         viewModel.onMessageShown()
     }
 
+    // Au retour dans l'app, la liaison avec l'appareil est refaite (voir RemoteViewModel.onForegrounded).
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { viewModel.onBackgrounded() }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { viewModel.onForegrounded() }
+
     Scaffold(
         topBar = {
-            RemoteHeader(
-                name = device?.name ?: "Télécommande",
-                connection = connection,
-                onRename = { renaming = true },
-                onPower = {
-                    haptics.perform(HapticKind.KEY)
-                    viewModel.onKey(RemoteKey.POWER)
-                },
-                onSettings = onSettingsClick,
-            )
+            Column {
+                RemoteHeader(
+                    name = device?.name ?: "Télécommande",
+                    connection = connection,
+                    onRename = { renaming = true },
+                    onPower = {
+                        haptics.perform(HapticKind.KEY)
+                        viewModel.onKey(RemoteKey.POWER)
+                    },
+                    onSettings = onSettingsClick,
+                )
+                ConnectionNotice(connection)
+            }
         },
         bottomBar = {
             NavigationBar {
@@ -196,6 +206,28 @@ fun RemoteScreen(
     }
 }
 
+/** Explique l'attente pendant la (re)connexion : on ne laisse pas l'utilisateur croire à un plantage. */
+@Composable
+private fun ConnectionNotice(connection: ConnectionState) {
+    val text =
+        when (connection) {
+            ConnectionState.RECONNECTING ->
+                "Reconnexion à l'appareil… C'est normal après un changement d'application : Android coupe " +
+                    "la liaison en arrière-plan. Quelques secondes ; vos touches partiront dès que c'est prêt."
+            ConnectionState.CONNECTING -> "Connexion à l'appareil… Quelques secondes."
+            else -> return
+        }
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)) {
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        Text(
+            text,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
+        )
+    }
+}
+
 @Composable
 private fun RemoteHeader(
     name: String,
@@ -221,7 +253,7 @@ private fun RemoteHeader(
                 val color =
                     when (connection) {
                         ConnectionState.CONNECTED -> MaterialTheme.colorScheme.primary
-                        ConnectionState.CONNECTING -> MaterialTheme.colorScheme.outline
+                        ConnectionState.CONNECTING, ConnectionState.RECONNECTING -> MaterialTheme.colorScheme.outline
                         ConnectionState.OFFLINE -> MaterialTheme.colorScheme.error
                     }
                 Box(Modifier.size(8.dp).background(color, CircleShape))
@@ -229,6 +261,7 @@ private fun RemoteHeader(
                     when (connection) {
                         ConnectionState.CONNECTED -> "Connecté"
                         ConnectionState.CONNECTING -> "Connexion…"
+                        ConnectionState.RECONNECTING -> "Reconnexion…"
                         ConnectionState.OFFLINE -> "Hors ligne"
                     },
                     style = MaterialTheme.typography.labelMedium,

@@ -41,6 +41,13 @@ interface RemoteConnection {
      */
     suspend fun open() = Unit
 
+    /**
+     * Repart d'une liaison neuve. À appeler au retour dans l'app : après un passage en arrière-plan Android a pu
+     * couper ou figer le réseau, et la télé ferme une liaison restée sans réponse ; l'ancienne paraît ouverte mais
+     * ne fonctionne plus.
+     */
+    suspend fun reconnect() = open()
+
     suspend fun send(key: RemoteKey)
 
     /**
