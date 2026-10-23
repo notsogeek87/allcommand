@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -137,7 +138,8 @@ fun RemoteScreen(
 
     Scaffold(
         topBar = {
-            Column {
+            // Pas de TopAppBar ici : c'est donc à l'en-tête de laisser la place à la barre d'état.
+            Column(modifier = Modifier.statusBarsPadding()) {
                 RemoteHeader(
                     name = device?.name ?: "Télécommande",
                     connection = connection,
