@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Settings
@@ -346,9 +347,7 @@ private fun TvPanel(
         PadKey(Icons.Default.SkipPrevious, "Précédent", Modifier.weight(1f).height(KEY_HEIGHT)) {
             press(RemoteKey.PREVIOUS, HapticKind.KEY)
         }
-        PadKey(Icons.Default.PlayArrow, "Lecture / Pause", Modifier.weight(1f).height(KEY_HEIGHT)) {
-            press(RemoteKey.PLAY_PAUSE, HapticKind.KEY)
-        }
+        PlayPauseKey(Modifier.weight(1f).height(KEY_HEIGHT)) { press(RemoteKey.PLAY_PAUSE, HapticKind.KEY) }
         PadKey(Icons.Default.SkipNext, "Suivant", Modifier.weight(1f).height(KEY_HEIGHT)) {
             press(RemoteKey.NEXT, HapticKind.KEY)
         }
@@ -471,6 +470,27 @@ private fun DirectionKey(
         container = MaterialTheme.colorScheme.secondaryContainer,
         content = MaterialTheme.colorScheme.onSecondaryContainer,
     ) { Icon(icon, contentDescription = null, modifier = Modifier.size(36.dp)) }
+}
+
+/** Lecture / Pause : une seule touche qui fait les deux, donc les deux symboles côte à côte. */
+@Composable
+private fun PlayPauseKey(
+    modifier: Modifier,
+    onPress: () -> Unit,
+) {
+    RemoteButton(
+        label = "Lecture / Pause",
+        onPress = onPress,
+        modifier = modifier,
+        shape = RoundedCornerShape(20.dp),
+        container = MaterialTheme.colorScheme.surfaceVariant,
+        content = MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(28.dp))
+            Icon(Icons.Default.Pause, contentDescription = null, modifier = Modifier.size(28.dp))
+        }
+    }
 }
 
 /** Touche rectangulaire à icône (retour, volume, lecture…). */
