@@ -103,7 +103,6 @@ private enum class Tab(
     val icon: ImageVector,
 ) {
     TV("TV", Icons.Default.Tv),
-    SOURCES("Sources", Icons.Default.Input),
     KEYBOARD("Clavier", Icons.Default.Keyboard),
 }
 
@@ -190,7 +189,6 @@ fun RemoteScreen(
                 val repeat: (RemoteKey) -> Unit = { viewModel.onKey(it) }
                 when (tab) {
                     Tab.TV -> TvPanel(press, repeat)
-                    Tab.SOURCES -> SourcesPanel(press, viewModel::onKey)
                     Tab.KEYBOARD -> KeyboardPanel(viewModel::onText, press)
                 }
             }
@@ -290,7 +288,7 @@ private fun TvPanel(
     press: (RemoteKey, HapticKind) -> Unit,
     repeat: (RemoteKey) -> Unit,
 ) {
-    // Retour / Accueil
+    // Retour / Accueil / Sources (la liste des sources se parcourt ensuite avec le pavé)
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
         PadKey(Icons.AutoMirrored.Filled.ArrowBack, "Retour", Modifier.weight(1f).height(KEY_HEIGHT)) {
             press(RemoteKey.BACK, HapticKind.KEY)
@@ -300,6 +298,9 @@ private fun TvPanel(
             "Accueil",
             Modifier.weight(1f).height(KEY_HEIGHT),
         ) { press(RemoteKey.HOME, HapticKind.KEY) }
+        PadKey(Icons.Default.Input, "Sources", Modifier.weight(1f).height(KEY_HEIGHT)) {
+            press(RemoteKey.SOURCES, HapticKind.KEY)
+        }
     }
     // Pavé directionnel : un seul ensemble, OK au centre
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -354,46 +355,6 @@ private fun TvPanel(
             press(RemoteKey.NEXT, HapticKind.KEY)
         }
     }
-}
-
-/** Sources : on ouvre la liste sur la télé, on la parcourt sans vibration, et seule la validation vibre. */
-@Composable
-private fun SourcesPanel(
-    press: (RemoteKey, HapticKind) -> Unit,
-    silentKey: (RemoteKey) -> Unit,
-) {
-    Text(
-        "Ouvrez la liste des sources sur la télé, parcourez-la avec Haut et Bas, puis validez.",
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Button(
-        onClick = { press(RemoteKey.SOURCES, HapticKind.KEY) },
-        modifier = Modifier.fillMaxWidth().height(KEY_HEIGHT),
-    ) {
-        Text("Afficher les sources")
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        // Parcourir la liste : pas de vibration à chaque mouvement.
-        PadKey(Icons.Default.KeyboardArrowUp, "Haut", Modifier.weight(1f).height(KEY_HEIGHT), onRepeat = {
-            silentKey(RemoteKey.UP)
-        }) {
-            silentKey(RemoteKey.UP)
-        }
-        PadKey(Icons.Default.KeyboardArrowDown, "Bas", Modifier.weight(1f).height(KEY_HEIGHT), onRepeat = {
-            silentKey(RemoteKey.DOWN)
-        }) {
-            silentKey(RemoteKey.DOWN)
-        }
-    }
-    RemoteButton(
-        label = "Choisir cette source",
-        onPress = { press(RemoteKey.OK, HapticKind.CONFIRM) },
-        modifier = Modifier.fillMaxWidth().height(KEY_HEIGHT + 8.dp),
-        shape = RoundedCornerShape(28.dp),
-        container = MaterialTheme.colorScheme.primary,
-        content = MaterialTheme.colorScheme.onPrimary,
-    ) { Text("Choisir cette source", style = MaterialTheme.typography.titleMedium) }
 }
 
 /** Clavier : le texte tapé ici est envoyé à la télé au fil de la frappe. */
