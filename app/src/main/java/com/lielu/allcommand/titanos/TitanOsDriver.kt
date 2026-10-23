@@ -108,6 +108,10 @@ private class TitanOsConnection(
     private val lock = Mutex()
     private var client: TitanOsClient? = null
 
+    override suspend fun open() {
+        lock.withLock { ensureClient() }
+    }
+
     override suspend fun send(key: RemoteKey) {
         val payload = JSONObject().put("key_code", key.titanKeyCode())
         lock.withLock {
@@ -124,7 +128,8 @@ private class TitanOsConnection(
     override fun close() = resetClient()
 
     private suspend fun ensureClient(): TitanOsClient {
-        client?.let { return it }
+        client?.takeIf { it.isConnected }?.let { return it }
+        resetClient()
         val user = device.credentials[TitanOsCredentials.USERNAME]
         val password = device.credentials[TitanOsCredentials.PASSWORD]
         val pinnedKey = device.credentials[TitanOsCredentials.PINNED_KEY]

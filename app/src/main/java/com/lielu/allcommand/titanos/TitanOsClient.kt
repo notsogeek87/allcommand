@@ -26,6 +26,9 @@ internal class TitanOsClient(
 ) {
     private var client: Mqtt5AsyncClient? = null
 
+    /** Vrai tant que la liaison MQTT est établie (faux après une coupure, une mise en veille de la télé…). */
+    val isConnected: Boolean get() = client?.state?.isConnected == true
+
     suspend fun connect() {
         val mqtt =
             MqttClient

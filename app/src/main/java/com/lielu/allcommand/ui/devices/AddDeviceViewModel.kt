@@ -81,6 +81,10 @@ class AddDeviceViewModel(
     private val _found = MutableStateFlow<List<FoundDevice>?>(null)
     val found: StateFlow<List<FoundDevice>?> = _found
 
+    /** Appareils compatibles trouvés mais déjà enregistrés : écartés de la liste. */
+    private val _alreadyAdded = MutableStateFlow(0)
+    val alreadyAdded: StateFlow<Int> = _alreadyAdded
+
     private val _batch = MutableStateFlow<BatchProgress?>(null)
     val batch: StateFlow<BatchProgress?> = _batch
 
@@ -121,8 +125,15 @@ class AddDeviceViewModel(
                             }.awaitAll()
                             .flatten()
                             .sortedBy { it.host }
-                    val names = namer.names(devices.map { it.host })
-                    _found.value = devices.map { it.copy(name = names[it.host]) }
+                    val known =
+                        repository.devices
+                            .first()
+                            .map { it.host }
+                            .toSet()
+                    val (registered, fresh) = devices.partition { it.host in known }
+                    _alreadyAdded.value = registered.size
+                    val names = namer.names(fresh.map { it.host })
+                    _found.value = fresh.map { it.copy(name = names[it.host]) }
                 } finally {
                     _scanning.value = false
                 }

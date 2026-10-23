@@ -111,7 +111,7 @@ fun AppNavHost(container: AppContainer) {
                     factory =
                         viewModelFactory {
                             initializer {
-                                RemoteViewModel(deviceId, container.deviceRepository, container.deviceDrivers)
+                                RemoteViewModel(deviceId, container.deviceRepository, container.remoteConnections)
                             }
                         },
                 )

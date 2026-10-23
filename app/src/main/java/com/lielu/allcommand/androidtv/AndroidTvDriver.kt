@@ -109,6 +109,10 @@ private class AndroidTvConnection(
     private val lock = Mutex()
     private var link: TvLink? = null
 
+    override suspend fun open() {
+        lock.withLock { withContext(Dispatchers.IO) { ensureLink() } }
+    }
+
     override suspend fun send(key: RemoteKey) {
         val frame = AndroidTvMessages.remoteKey(key)
         lock.withLock {

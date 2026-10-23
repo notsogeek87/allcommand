@@ -56,6 +56,7 @@ fun AddDeviceScreen(
     val step by viewModel.step.collectAsState()
     val scanning by viewModel.scanning.collectAsState()
     val found by viewModel.found.collectAsState()
+    val alreadyAdded by viewModel.alreadyAdded.collectAsState()
     val batch by viewModel.batch.collectAsState()
     val error by viewModel.error.collectAsState()
 
@@ -101,6 +102,7 @@ fun AddDeviceScreen(
                         host = host,
                         scanning = scanning,
                         found = found,
+                        alreadyAdded = alreadyAdded,
                         viewModel = viewModel,
                     )
             }
@@ -116,6 +118,7 @@ private fun DeviceForm(
     host: String,
     scanning: Boolean,
     found: List<FoundDevice>?,
+    alreadyAdded: Int,
     viewModel: AddDeviceViewModel,
 ) {
     Text(
@@ -130,8 +133,13 @@ private fun DeviceForm(
             }
         found.isNullOrEmpty() ->
             Text(
-                "Aucun appareil compatible trouvé. Vérifiez qu'il est allumé et sur le même Wi-Fi, puis relancez " +
-                    "la recherche, ou saisissez son adresse IP à la main ci-dessous.",
+                if (alreadyAdded > 0) {
+                    "Tous les appareils trouvés sont déjà ajoutés. Pour en ajouter un autre, allumez-le et relancez " +
+                        "la recherche, ou saisissez son adresse IP à la main ci-dessous."
+                } else {
+                    "Aucun appareil compatible trouvé. Vérifiez qu'il est allumé et sur le même Wi-Fi, puis " +
+                        "relancez la recherche, ou saisissez son adresse IP à la main ci-dessous."
+                },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -35,6 +35,12 @@ interface PairingSession {
 
 /** Connexion de télécommande vers un appareil appairé. */
 interface RemoteConnection {
+    /**
+     * Ouvre la liaison avec l'appareil sans rien envoyer, pour que la première touche parte aussitôt. Sans effet
+     * si elle est déjà ouverte ; lève [DeviceException] si l'appareil est injoignable.
+     */
+    suspend fun open() = Unit
+
     suspend fun send(key: RemoteKey)
 
     fun close()
