@@ -33,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -67,7 +68,7 @@ fun AddDeviceScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Ajouter un appareil") },
+                title = { Text("Ajouter une TV") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Retour")
@@ -121,6 +122,8 @@ private fun DeviceForm(
     alreadyAdded: Int,
     viewModel: AddDeviceViewModel,
 ) {
+    // Saisie manuelle : déverrouillée seulement sur demande explicite (rien trouvé, appareil hors du Wi-Fi).
+    var manualAddress by rememberSaveable { mutableStateOf(false) }
     Text(
         "Allumez vos appareils et connectez ce téléphone au même Wi-Fi : ils s'affichent ci-dessous.",
         style = MaterialTheme.typography.bodyMedium,
@@ -149,7 +152,10 @@ private fun DeviceForm(
                 found.forEach { device ->
                     FilterChip(
                         selected = device.host == host,
-                        onClick = { viewModel.select(device) },
+                        onClick = {
+                            manualAddress = false
+                            viewModel.select(device)
+                        },
                         label = { Text(device.title) },
                     )
                 }
@@ -175,15 +181,20 @@ private fun DeviceForm(
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
+    // Lecture seule : l'adresse vient du choix dans la liste, pour qu'un geste malheureux ne la change pas.
     OutlinedTextField(
         value = host,
         onValueChange = viewModel::onHostChange,
-        label = { Text("Adresse IP (remplie en choisissant un appareil)") },
+        readOnly = !manualAddress,
+        label = { Text(if (manualAddress) "Adresse IP" else "Adresse IP (choisie dans la liste)") },
         placeholder = { Text("192.168.1.20") },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
         modifier = Modifier.fillMaxWidth(),
     )
+    if (!manualAddress) {
+        TextButton(onClick = { manualAddress = true }) { Text("Saisir l'adresse à la main") }
+    }
     Button(
         onClick = viewModel::startPairing,
         enabled = host.isNotBlank(),

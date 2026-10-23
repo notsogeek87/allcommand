@@ -18,7 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -99,9 +99,11 @@ fun InitScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddDeviceClick) {
-                Icon(Icons.Default.Add, contentDescription = "Ajouter un appareil")
-            }
+            ExtendedFloatingActionButton(
+                onClick = onAddDeviceClick,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Ajouter une TV") },
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
@@ -112,7 +114,7 @@ fun InitScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "Aucun appareil. Touchez + pour ajouter une télé.",
+                    "Aucun appareil. Touchez « Ajouter une TV » pour commencer.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
