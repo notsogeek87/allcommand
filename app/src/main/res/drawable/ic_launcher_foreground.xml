@@ -1,11 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Icône neutre du modèle : un « L » stylisé. À remplacer par l'identité de l'app. -->
+<!-- Logo allCommand : une télécommande qui émet des ondes, aux couleurs de la marque (voir ui/theme/Theme.kt). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    <!-- Ondes émises -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M46.5,32 a10,10 0 0 1 15,0"
+        android:strokeColor="#D0BCFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="3" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M42,27 a17,17 0 0 1 24,0"
+        android:strokeColor="#D0BCFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="3" />
+    <!-- Boîtier -->
+    <path
+        android:fillColor="#EADDFF"
+        android:pathData="M49,38 h10 a8,8 0 0 1 8,8 v30 a8,8 0 0 1 -8,8 h-10 a8,8 0 0 1 -8,-8 v-30 a8,8 0 0 1 8,-8 z" />
+    <!-- Touche marche, croix directionnelle, deux touches -->
     <path
         android:fillColor="#6750A4"
-        android:pathData="M40,30 h10 v38 h22 v10 h-32 z" />
+        android:pathData="M54,43 m-2.5,0 a2.5,2.5 0 1 0 5,0 a2.5,2.5 0 1 0 -5,0" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M54,58 m-9,0 a9,9 0 1 0 18,0 a9,9 0 1 0 -18,0" />
+    <path
+        android:fillColor="#EADDFF"
+        android:pathData="M54,58 m-3.5,0 a3.5,3.5 0 1 0 7,0 a3.5,3.5 0 1 0 -7,0" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M47.5,76 m-3,0 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0" />
+    <path
+        android:fillColor="#6750A4"
+        android:pathData="M60.5,76 m-3,0 a3,3 0 1 0 6,0 a3,3 0 1 0 -6,0" />
 </vector>

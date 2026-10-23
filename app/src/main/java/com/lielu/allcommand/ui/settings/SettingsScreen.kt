@@ -56,8 +56,13 @@ import com.lielu.allcommand.BuildConfig
 import com.lielu.allcommand.R
 import com.lielu.allcommand.data.settings.AutoBackupSettings
 import com.lielu.allcommand.data.settings.BackupStatus
+import com.lielu.allcommand.data.settings.HapticIntensity
+import com.lielu.allcommand.data.settings.HapticSettings
 import com.lielu.allcommand.data.settings.ThemeMode
 import com.lielu.allcommand.ui.formatDateTime
+import com.lielu.allcommand.ui.haptics.HapticKind
+import com.lielu.allcommand.ui.haptics.Haptics
+import com.lielu.allcommand.ui.haptics.rememberHaptics
 import com.lielu.allcommand.ui.update.updateErrorMessage
 import com.lielu.githubupdater.UpdateInfo
 import com.lielu.githubupdater.UpdateState
@@ -128,6 +133,14 @@ fun SettingsScreen(
                 modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
             )
             ThemeModeSelector(selected = uiState.themeMode, onSelected = viewModel::onThemeModeChanged)
+
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+            HapticsSection(
+                settings = uiState.haptics,
+                onToggle = viewModel::onHapticsToggled,
+                onIntensity = viewModel::onHapticIntensityChanged,
+            )
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
@@ -387,4 +400,58 @@ private fun ThemeModeSelector(
 private fun defaultExportFileName(prefix: String): String {
     val date = DateTimeFormatter.ofPattern("yyyy-MM-dd").format(Instant.now().atZone(ZoneId.systemDefault()))
     return "$prefix-$date.json"
+}
+
+/** Section « Retour haptique » : interrupteur, intensité et essai. Le réglage système reste prioritaire. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HapticsSection(
+    settings: HapticSettings,
+    onToggle: (Boolean) -> Unit,
+    onIntensity: (HapticIntensity) -> Unit,
+) {
+    val context = LocalContext.current
+    val haptics = rememberHaptics(settings.copy(enabled = true))
+    val systemEnabled = Haptics.systemEnabled(context)
+    val labels =
+        listOf(
+            HapticIntensity.LOW to "Faible",
+            HapticIntensity.MEDIUM to "Moyen",
+            HapticIntensity.HIGH to "Fort",
+        )
+
+    Text("Retour haptique", style = MaterialTheme.typography.titleMedium)
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text("Vibrations au toucher", modifier = Modifier.weight(1f))
+        Switch(checked = settings.enabled, onCheckedChange = onToggle)
+    }
+    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        labels.forEachIndexed { index, (intensity, label) ->
+            SegmentedButton(
+                selected = settings.intensity == intensity,
+                onClick = { onIntensity(intensity) },
+                enabled = settings.enabled,
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = labels.size),
+            ) { Text(label) }
+        }
+    }
+    OutlinedButton(
+        onClick = { haptics.perform(HapticKind.CONFIRM) },
+        enabled = settings.enabled,
+        modifier = Modifier.padding(top = 8.dp),
+    ) { Text("Tester la vibration") }
+    Text(
+        if (systemEnabled) {
+            "Une petite vibration à chaque touche, comme un clic. L'intensité règle la netteté du clic."
+        } else {
+            "Les vibrations au toucher sont désactivées dans les réglages Android : l'app les respecte et ne vibre pas."
+        },
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(top = 4.dp),
+    )
 }

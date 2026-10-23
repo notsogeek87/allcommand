@@ -52,6 +52,22 @@ class SettingsRepositoryImpl(
         }
     }
 
+    override val haptics: Flow<HapticSettings> =
+        dataStore.data.map { prefs ->
+            HapticSettings(
+                enabled = prefs[Keys.HAPTICS_ENABLED] ?: true,
+                intensity = HapticIntensity.fromStorageValue(prefs[Keys.HAPTICS_INTENSITY]),
+            )
+        }
+
+    override suspend fun setHapticsEnabled(enabled: Boolean) {
+        dataStore.edit { it[Keys.HAPTICS_ENABLED] = enabled }
+    }
+
+    override suspend fun setHapticIntensity(intensity: HapticIntensity) {
+        dataStore.edit { it[Keys.HAPTICS_INTENSITY] = intensity.name }
+    }
+
     override val backupStatus: Flow<BackupStatus> =
         dataStore.data.map { prefs ->
             BackupStatus(
@@ -86,5 +102,7 @@ class SettingsRepositoryImpl(
         val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
         val LAST_BACKUP_ERROR = stringPreferencesKey("last_backup_error")
         val WELCOME_SHOWN = booleanPreferencesKey("welcome_shown")
+        val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
+        val HAPTICS_INTENSITY = stringPreferencesKey("haptics_intensity")
     }
 }

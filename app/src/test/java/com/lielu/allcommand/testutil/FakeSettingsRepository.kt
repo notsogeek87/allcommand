@@ -2,6 +2,8 @@ package com.lielu.allcommand.testutil
 
 import com.lielu.allcommand.data.settings.AutoBackupSettings
 import com.lielu.allcommand.data.settings.BackupStatus
+import com.lielu.allcommand.data.settings.HapticIntensity
+import com.lielu.allcommand.data.settings.HapticSettings
 import com.lielu.allcommand.data.settings.SettingsRepository
 import com.lielu.allcommand.data.settings.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +34,18 @@ class FakeSettingsRepository : SettingsRepository {
 
     override suspend fun setAutoBackupKeep(keep: Int) {
         auto.value = auto.value.copy(keep = keep)
+    }
+
+    private val hapticState = MutableStateFlow(HapticSettings())
+
+    override val haptics: Flow<HapticSettings> = hapticState
+
+    override suspend fun setHapticsEnabled(enabled: Boolean) {
+        hapticState.value = hapticState.value.copy(enabled = enabled)
+    }
+
+    override suspend fun setHapticIntensity(intensity: HapticIntensity) {
+        hapticState.value = hapticState.value.copy(intensity = intensity)
     }
 
     override val backupStatus: Flow<BackupStatus> = status

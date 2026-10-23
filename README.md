@@ -7,10 +7,14 @@ Télécommande Android pour plusieurs appareils (Kotlin, Jetpack Compose), issue
 | Type | État |
 | --- | --- |
 | **Philips Titan OS** (ex. 55PUS8009) | Appairage par code à 4 chiffres affiché sur la télé, puis touches via MQTT v5 sur TLS (port 8883). Protocole validé sur une télé réelle depuis un script Python ; le code Kotlin n'est validé que par la CI. |
-| **Android TV** | Prévu (protocole Android TV Remote v2, ports 6466/6467) : proposé dans l'interface mais pas encore actif. |
+| **Android TV** | Protocole Android TV Remote v2 : appairage par code à 6 caractères hexadécimaux (port 6467), touches sur le port 6466 ([détail](docs/api/android-tv-remote-v2.md)). Appairage démarré sur une télé réelle ; saisie de texte et touches média à valider. |
 
 Les secrets d'appairage restent dans le DataStore de l'app : ils sont exclus de la sauvegarde JSON et de
 l'Auto Backup Android. Après une restauration, les appareils reviennent « à appairer ».
+
+## Documentation
+
+Guides, référence des pilotes et décisions d'architecture : [`docs/README.md`](docs/README.md).
 
 Dans la suite de ce document, les sections issues du modèle décrivent la configuration commune.
 
@@ -37,7 +41,7 @@ Dans la suite de ce document, les sections issues du modèle décrivent la confi
    cible des mises à jour.
 3. `scripts/verify.sh`, committer, pousser sur une branche : la CI construit l'APK.
 4. Fusionner dans `main` : la CI publie la release `v1.0.<n>` avec l'APK, que l'app installée détectera.
-5. Remplacer l'icône (`app/src/main/res/drawable/ic_launcher_foreground.xml`) et le contenu de
+5. Remplacer l'icône (`app/src/main/res/drawable/ic_launcher_foreground.xml`, `ic_launcher_background.xml`, `ic_launcher_monochrome.xml` et `ic_logo.xml`) et le contenu de
    `ui/init/InitScreen.kt`.
 
 ## Où récupérer les APK

@@ -2,11 +2,14 @@ package com.lielu.allcommand.ui.init
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -15,7 +18,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
@@ -38,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.lielu.allcommand.R
@@ -73,7 +77,19 @@ fun InitScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Image(
+                            painterResource(R.drawable.ic_logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp),
+                        )
+                        Text(stringResource(R.string.app_name))
+                    }
+                },
                 actions = {
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Paramètres")
@@ -83,9 +99,11 @@ fun InitScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddDeviceClick) {
-                Icon(Icons.Default.Add, contentDescription = "Ajouter un appareil")
-            }
+            ExtendedFloatingActionButton(
+                onClick = onAddDeviceClick,
+                icon = { Icon(Icons.Default.Add, contentDescription = null) },
+                text = { Text("Ajouter une TV") },
+            )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { paddingValues ->
@@ -96,7 +114,7 @@ fun InitScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Text(
-                    "Aucun appareil. Touchez + pour ajouter une télé.",
+                    "Aucun appareil. Touchez « Ajouter une TV » pour commencer.",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

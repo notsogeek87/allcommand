@@ -84,7 +84,13 @@ fun AppNavHost(container: AppContainer) {
                     entry,
                     factory =
                         viewModelFactory {
-                            initializer { AddDeviceViewModel(container.deviceRepository, container.deviceDrivers) }
+                            initializer {
+                                AddDeviceViewModel(
+                                    container.deviceRepository,
+                                    container.deviceDrivers,
+                                    container.deviceNamer,
+                                )
+                            }
                         },
                 )
             AddDeviceScreen(
@@ -105,11 +111,19 @@ fun AppNavHost(container: AppContainer) {
                     factory =
                         viewModelFactory {
                             initializer {
-                                RemoteViewModel(deviceId, container.deviceRepository, container.deviceDrivers)
+                                RemoteViewModel(
+                                    deviceId,
+                                    container.deviceRepository,
+                                    container.remoteConnections,
+                                    container.settingsRepository,
+                                )
                             }
                         },
                 )
-            RemoteScreen(viewModel = viewModel, onBackClick = { navController.popBackStack() })
+            RemoteScreen(
+                viewModel = viewModel,
+                onSettingsClick = { navController.navigate(AppDestinations.SETTINGS) },
+            )
         }
     }
 }

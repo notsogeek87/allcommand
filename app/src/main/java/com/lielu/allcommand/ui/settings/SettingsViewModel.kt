@@ -10,6 +10,8 @@ import com.lielu.allcommand.backup.AutoBackupRunner
 import com.lielu.allcommand.backup.BackupManager
 import com.lielu.allcommand.data.settings.AutoBackupSettings
 import com.lielu.allcommand.data.settings.BackupStatus
+import com.lielu.allcommand.data.settings.HapticIntensity
+import com.lielu.allcommand.data.settings.HapticSettings
 import com.lielu.allcommand.data.settings.SettingsRepository
 import com.lielu.allcommand.data.settings.ThemeMode
 import com.lielu.allcommand.ui.describeImport
@@ -31,6 +33,7 @@ data class SettingsUiState(
     val autoBackup: AutoBackupSettings = AutoBackupSettings(),
     val backupStatus: BackupStatus = BackupStatus(),
     val backupInProgress: Boolean = false,
+    val haptics: HapticSettings = HapticSettings(),
     val message: String? = null,
 )
 
@@ -57,16 +60,26 @@ class SettingsViewModel(
             settingsRepository.themeMode,
             settingsRepository.autoBackup,
             settingsRepository.backupStatus,
+            settingsRepository.haptics,
             opState,
-        ) { themeMode, autoBackup, status, op ->
+        ) { themeMode, autoBackup, status, haptics, op ->
             SettingsUiState(
                 themeMode = themeMode,
                 autoBackup = autoBackup,
                 backupStatus = status,
                 backupInProgress = op.inProgress,
+                haptics = haptics,
                 message = op.message,
             )
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+
+    fun onHapticsToggled(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setHapticsEnabled(enabled) }
+    }
+
+    fun onHapticIntensityChanged(intensity: HapticIntensity) {
+        viewModelScope.launch { settingsRepository.setHapticIntensity(intensity) }
+    }
 
     fun onThemeModeChanged(mode: ThemeMode) {
         viewModelScope.launch { settingsRepository.setThemeMode(mode) }

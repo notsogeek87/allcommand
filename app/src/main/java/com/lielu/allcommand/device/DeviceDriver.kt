@@ -11,6 +11,12 @@ interface DeviceDriver {
     /** Faux tant que le protocole du type n'est pas branché : l'interface le dit au lieu de proposer un échec. */
     val isAvailable: Boolean get() = true
 
+    /**
+     * Vrai si [host] est bien un appareil de ce type. Un port ouvert ne suffit pas (box, aspirateur connecté et
+     * imprimante en ouvrent aussi) : le scan n'affiche que les appareils que ce pilote sait réellement piloter.
+     */
+    suspend fun probe(host: String): Boolean = true
+
     /** Ouvre l'appairage : l'appareil affiche un code que l'utilisateur saisit ensuite via [PairingSession.complete]. */
     suspend fun startPairing(host: String): PairingSession
 
@@ -29,7 +35,27 @@ interface PairingSession {
 
 /** Connexion de télécommande vers un appareil appairé. */
 interface RemoteConnection {
+    /**
+     * Ouvre la liaison avec l'appareil sans rien envoyer, pour que la première touche parte aussitôt. Sans effet
+     * si elle est déjà ouverte ; lève [DeviceException] si l'appareil est injoignable.
+     */
+    suspend fun open() = Unit
+
+    /**
+     * Repart d'une liaison neuve. À appeler au retour dans l'app : après un passage en arrière-plan Android a pu
+     * couper ou figer le réseau, et la télé ferme une liaison restée sans réponse ; l'ancienne paraît ouverte mais
+     * ne fonctionne plus.
+     */
+    suspend fun reconnect() = open()
+
     suspend fun send(key: RemoteKey)
+
+    /**
+     * Saisit du texte dans le champ actif de l'appareil. `\b` efface un caractère, `\n` valide. Par défaut non pris
+     * en charge : le message est affiché tel quel à l'utilisateur.
+     */
+    suspend fun sendText(text: String): Unit =
+        throw DeviceException("La saisie de texte n'est pas encore prise en charge pour cet appareil.")
 
     fun close()
 }

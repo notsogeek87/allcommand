@@ -19,6 +19,8 @@ enum class RemoteKey {
     MUTE,
     POWER,
     PLAY_PAUSE,
+    PREVIOUS,
+    NEXT,
     CHANNEL_UP,
     CHANNEL_DOWN,
 }

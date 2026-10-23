@@ -15,6 +15,9 @@ import com.lielu.allcommand.data.settings.SettingsRepository
 import com.lielu.allcommand.data.settings.SettingsRepositoryImpl
 import com.lielu.allcommand.data.settings.settingsDataStore
 import com.lielu.allcommand.device.DeviceDrivers
+import com.lielu.allcommand.device.DeviceNamer
+import com.lielu.allcommand.device.MdnsDeviceNamer
+import com.lielu.allcommand.device.RemoteConnections
 import com.lielu.allcommand.titanos.TitanOsDriver
 import com.lielu.allcommand.work.AutoBackupScheduler
 import com.lielu.allcommand.work.AutoBackupWorker
@@ -45,6 +48,17 @@ class AppContainer(
 
     /** Un pilote par type d'appareil : pour en ajouter un, le déclarer ici (voir `device/DeviceDriver.kt`). */
     val deviceDrivers = DeviceDrivers(listOf(TitanOsDriver(), AndroidTvDriver()))
+
+    /** Liaisons avec les appareils, ouvertes une fois et gardées tant que l'app vit ; fermées si l'appareil est supprimé. */
+    val remoteConnections = RemoteConnections(deviceDrivers)
+
+    init {
+        applicationScope.launch {
+            deviceRepository.devices.collect { devices -> remoteConnections.retain(devices.map { it.id }.toSet()) }
+        }
+    }
+
+    val deviceNamer: DeviceNamer = MdnsDeviceNamer(appContext)
 
     /**
      * Données incluses dans toute sauvegarde (manuelle ou automatique) et restaurées à l'import.
