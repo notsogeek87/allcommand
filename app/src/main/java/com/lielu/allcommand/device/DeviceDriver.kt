@@ -43,6 +43,13 @@ interface RemoteConnection {
 
     suspend fun send(key: RemoteKey)
 
+    /**
+     * Saisit du texte dans le champ actif de l'appareil. `\b` efface un caractère, `\n` valide. Par défaut non pris
+     * en charge : le message est affiché tel quel à l'utilisateur.
+     */
+    suspend fun sendText(text: String): Unit =
+        throw DeviceException("La saisie de texte n'est pas encore prise en charge pour cet appareil.")
+
     fun close()
 }
 

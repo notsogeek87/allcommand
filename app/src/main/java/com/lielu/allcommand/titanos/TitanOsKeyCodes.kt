@@ -23,6 +23,8 @@ internal fun RemoteKey.titanKeyCode(): Int =
         RemoteKey.MUTE -> 113
         RemoteKey.POWER -> 116
         RemoteKey.PLAY_PAUSE -> 164
+        RemoteKey.PREVIOUS -> 165
+        RemoteKey.NEXT -> 163
         RemoteKey.CHANNEL_UP -> 402
         RemoteKey.CHANNEL_DOWN -> 403
     }

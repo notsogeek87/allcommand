@@ -23,6 +23,13 @@ interface SettingsRepository {
 
     suspend fun recordBackupFailure(message: String)
 
+    /** Retour haptique des touches de la télécommande. */
+    val haptics: Flow<HapticSettings>
+
+    suspend fun setHapticsEnabled(enabled: Boolean)
+
+    suspend fun setHapticIntensity(intensity: HapticIntensity)
+
     /** `true` une fois l'invitation de bienvenue (« restaurer une sauvegarde ? ») traitée. */
     val welcomeShown: Flow<Boolean>
 

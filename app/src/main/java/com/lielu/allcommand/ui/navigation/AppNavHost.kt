@@ -111,11 +111,19 @@ fun AppNavHost(container: AppContainer) {
                     factory =
                         viewModelFactory {
                             initializer {
-                                RemoteViewModel(deviceId, container.deviceRepository, container.remoteConnections)
+                                RemoteViewModel(
+                                    deviceId,
+                                    container.deviceRepository,
+                                    container.remoteConnections,
+                                    container.settingsRepository,
+                                )
                             }
                         },
                 )
-            RemoteScreen(viewModel = viewModel, onBackClick = { navController.popBackStack() })
+            RemoteScreen(
+                viewModel = viewModel,
+                onSettingsClick = { navController.navigate(AppDestinations.SETTINGS) },
+            )
         }
     }
 }

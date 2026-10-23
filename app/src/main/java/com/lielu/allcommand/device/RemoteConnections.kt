@@ -18,13 +18,17 @@ class RemoteConnections(
     @Synchronized
     fun get(device: Device): RemoteConnection {
         val existing = entries[device.id]
-        if (existing != null && existing.device == device) return existing.connection
+        if (existing != null && existing.device.sameLink(device)) return existing.connection
         existing?.connection?.close()
         return drivers
             .forType(device.type)
             .connect(device)
             .also { entries[device.id] = Entry(device, it) }
     }
+
+    /** Le nom est sans effet sur la liaison : renommer un appareil ne doit pas la couper. */
+    private fun Device.sameLink(other: Device) =
+        type == other.type && host == other.host && credentials == other.credentials
 
     /** Ferme les connexions des appareils qui ne sont plus enregistrés. */
     @Synchronized

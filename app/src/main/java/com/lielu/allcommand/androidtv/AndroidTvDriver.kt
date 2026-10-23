@@ -132,6 +132,22 @@ private class AndroidTvConnection(
         }
     }
 
+    override suspend fun sendText(text: String) {
+        val frames = AndroidTvText.keyCodes(text).map(AndroidTvMessages::remoteKeyCode)
+        if (frames.isEmpty()) return
+        lock.withLock {
+            withContext(Dispatchers.IO) {
+                try {
+                    val current = ensureLink()
+                    frames.forEach(current::send)
+                } catch (e: IOException) {
+                    reset()
+                    throw DeviceException("La télé ne répond pas. Est-elle allumée, sur le même Wi-Fi ?", e)
+                }
+            }
+        }
+    }
+
     override fun close() = reset()
 
     private fun ensureLink(): TvLink {

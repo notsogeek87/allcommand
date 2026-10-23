@@ -132,10 +132,12 @@ internal object AndroidTvMessages {
     fun remotePingResponse(request: ProtoMessage): ByteArray =
         ProtoWriter().message(9) { varint(1, request.message(REMOTE_PING_REQUEST)?.long(1) ?: 0L) }.toFrame()
 
-    fun remoteKey(key: RemoteKey): ByteArray =
+    fun remoteKey(key: RemoteKey): ByteArray = remoteKeyCode(key.androidKeyCode())
+
+    fun remoteKeyCode(code: Int): ByteArray =
         ProtoWriter()
             .message(10) {
-                varint(1, key.androidKeyCode().toLong())
+                varint(1, code.toLong())
                 varint(2, DIRECTION_SHORT)
             }.toFrame()
 }
@@ -157,6 +159,8 @@ internal fun RemoteKey.androidKeyCode(): Int =
         RemoteKey.MUTE -> 164
         RemoteKey.POWER -> 26
         RemoteKey.PLAY_PAUSE -> 85
+        RemoteKey.PREVIOUS -> 88
+        RemoteKey.NEXT -> 87
         RemoteKey.CHANNEL_UP -> 166
         RemoteKey.CHANNEL_DOWN -> 167
     }
