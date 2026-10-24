@@ -64,6 +64,11 @@ class InitViewModel(
         viewModelScope.launch { deviceRepository.remove(id) }
     }
 
+    /** Annulation d'une suppression : remet l'appareil tel quel, appairage compris. */
+    fun onDeviceRestored(device: Device) {
+        viewModelScope.launch { deviceRepository.add(device) }
+    }
+
     fun onMessageShown() {
         _message.value = null
     }
