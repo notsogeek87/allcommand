@@ -63,4 +63,12 @@ class FakeSettingsRepository : SettingsRepository {
     override suspend fun setWelcomeShown() {
         welcome.value = true
     }
+
+    private val lastDevice = MutableStateFlow<String?>(null)
+
+    override val lastDeviceId: Flow<String?> = lastDevice
+
+    override suspend fun setLastDeviceId(id: String) {
+        lastDevice.value = id
+    }
 }

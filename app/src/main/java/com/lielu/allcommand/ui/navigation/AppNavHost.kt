@@ -1,6 +1,11 @@
 package com.lielu.allcommand.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
@@ -18,6 +23,7 @@ import com.lielu.allcommand.ui.remote.RemoteScreen
 import com.lielu.allcommand.ui.remote.RemoteViewModel
 import com.lielu.allcommand.ui.settings.SettingsScreen
 import com.lielu.allcommand.ui.settings.SettingsViewModel
+import kotlinx.coroutines.flow.first
 
 object AppDestinations {
     const val INIT = "init"
@@ -32,6 +38,15 @@ object AppDestinations {
 @Composable
 fun AppNavHost(container: AppContainer) {
     val navController = rememberNavController()
+
+    // Au lancement, on rouvre directement la dernière télécommande utilisée ; le retour mène à la liste.
+    var autoOpenDone by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (autoOpenDone) return@LaunchedEffect
+        autoOpenDone = true
+        val id = container.settingsRepository.lastDeviceId.first() ?: return@LaunchedEffect
+        if (container.deviceRepository.get(id) != null) navController.navigate(AppDestinations.remote(id))
+    }
 
     NavHost(navController = navController, startDestination = AppDestinations.INIT) {
         composable(AppDestinations.INIT) { entry ->

@@ -94,6 +94,13 @@ class SettingsRepositoryImpl(
         dataStore.edit { it[Keys.WELCOME_SHOWN] = true }
     }
 
+    override val lastDeviceId: Flow<String?> =
+        dataStore.data.map { prefs -> prefs[Keys.LAST_DEVICE_ID] }
+
+    override suspend fun setLastDeviceId(id: String) {
+        dataStore.edit { it[Keys.LAST_DEVICE_ID] = id }
+    }
+
     private object Keys {
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val AUTO_BACKUP_ENABLED = booleanPreferencesKey("auto_backup_enabled")
@@ -102,6 +109,7 @@ class SettingsRepositoryImpl(
         val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
         val LAST_BACKUP_ERROR = stringPreferencesKey("last_backup_error")
         val WELCOME_SHOWN = booleanPreferencesKey("welcome_shown")
+        val LAST_DEVICE_ID = stringPreferencesKey("last_device_id")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val HAPTICS_INTENSITY = stringPreferencesKey("haptics_intensity")
     }

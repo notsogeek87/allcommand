@@ -34,4 +34,9 @@ interface SettingsRepository {
     val welcomeShown: Flow<Boolean>
 
     suspend fun setWelcomeShown()
+
+    /** Dernière télécommande ouverte : l'app s'y rouvre directement au lancement. */
+    val lastDeviceId: Flow<String?>
+
+    suspend fun setLastDeviceId(id: String)
 }

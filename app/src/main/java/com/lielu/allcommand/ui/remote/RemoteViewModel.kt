@@ -30,7 +30,7 @@ class RemoteViewModel(
     deviceId: String,
     private val repository: DeviceRepository,
     private val connections: RemoteConnections,
-    settings: SettingsRepository,
+    private val settings: SettingsRepository,
 ) : ViewModel() {
     private val _device = MutableStateFlow<Device?>(null)
     val device: StateFlow<Device?> = _device
@@ -45,6 +45,7 @@ class RemoteViewModel(
         settings.haptics.stateIn(viewModelScope, SharingStarted.Eagerly, HapticSettings())
 
     init {
+        viewModelScope.launch { settings.setLastDeviceId(deviceId) }
         viewModelScope.launch {
             val loaded = repository.get(deviceId)
             _device.value = loaded
