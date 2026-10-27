@@ -132,6 +132,33 @@ internal object AndroidTvMessages {
     fun remotePingResponse(request: ProtoMessage): ByteArray =
         ProtoWriter().message(9) { varint(1, request.message(REMOTE_PING_REQUEST)?.long(1) ?: 0L) }.toFrame()
 
+    /** Champs de RemoteMessage liés à la saisie : la télé annonce un champ de texte actif (20 et 22). */
+    const val REMOTE_IME_KEY_INJECT = 20
+    const val REMOTE_IME_SHOW_REQUEST = 22
+    private const val REMOTE_IME_BATCH_EDIT = 21
+
+    /** Remplace le contenu du champ de texte actif de la télé par [value] (curseur à la fin). */
+    fun remoteImeInsert(
+        imeCounter: Long,
+        fieldCounter: Long,
+        value: String,
+    ): ByteArray {
+        val cursor = (value.length - 1).coerceAtLeast(0).toLong()
+        return ProtoWriter()
+            .message(REMOTE_IME_BATCH_EDIT) {
+                varint(1, imeCounter)
+                varint(2, fieldCounter)
+                message(3) {
+                    varint(1, 1)
+                    message(2) {
+                        varint(1, cursor)
+                        varint(2, cursor)
+                        string(3, value)
+                    }
+                }
+            }.toFrame()
+    }
+
     fun remoteKey(key: RemoteKey): ByteArray = remoteKeyCode(key.androidKeyCode())
 
     fun remoteKeyCode(code: Int): ByteArray =

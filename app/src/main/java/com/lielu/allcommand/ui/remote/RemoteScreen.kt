@@ -367,7 +367,7 @@ private fun KeyboardPanel(
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     Text(
-        "Touchez un champ de texte sur la télé, puis tapez ici : les lettres sans accent, les chiffres et l'espace sont envoyés au fil de la frappe.",
+        "Ouvrez un champ de texte sur la télé (recherche…), puis tapez ici : le texte est envoyé au fil de la frappe.",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

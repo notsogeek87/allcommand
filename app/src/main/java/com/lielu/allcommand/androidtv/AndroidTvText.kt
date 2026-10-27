@@ -31,3 +31,70 @@ internal object AndroidTvText {
     private const val KEYCODE_A = 29
     private const val ASCII_LIMIT = 128
 }
+
+/**
+ * Champ de texte actif d'une Android TV. Les touches-lettres d'un clavier à l'écran (Gboard TV) sont ignorées : la
+ * saisie passe par la modification de texte du protocole (`RemoteImeBatchEdit`), qui exige les compteurs annoncés
+ * par la télé quand un champ prend le focus. Sans champ annoncé, on retombe sur des appuis de touches.
+ */
+internal class AndroidTvTextField {
+    @Volatile private var fieldCounter: Long? = null
+
+    @Volatile private var value = ""
+    private var imeCounter = 0L
+
+    fun onMessage(message: ProtoMessage) {
+        val status =
+            (
+                message.message(AndroidTvMessages.REMOTE_IME_KEY_INJECT)
+                    ?: message.message(AndroidTvMessages.REMOTE_IME_SHOW_REQUEST)
+            )?.message(2)
+                ?: return
+        fieldCounter = status.long(1) ?: 0L
+        value = status.bytes(2)?.toString(Charsets.UTF_8).orEmpty()
+    }
+
+    fun clear() {
+        fieldCounter = null
+        value = ""
+    }
+
+    /** Trames à envoyer pour [text] (`\b` efface, `\n` valide). */
+    fun frames(text: String): List<ByteArray> {
+        val counter = fieldCounter ?: return AndroidTvText.keyCodes(text).map(AndroidTvMessages::remoteKeyCode)
+        val frames = mutableListOf<ByteArray>()
+        var current = value
+        var pending = false
+
+        fun flush() {
+            if (!pending) return
+            frames += AndroidTvMessages.remoteImeInsert(imeCounter++, counter, current)
+            pending = false
+        }
+        for (c in text) {
+            when (c) {
+                '\b' -> {
+                    flush()
+                    current = current.dropLast(1)
+                    frames += AndroidTvMessages.remoteKeyCode(KEYCODE_DEL)
+                }
+                '\n' -> {
+                    flush()
+                    frames += AndroidTvMessages.remoteKeyCode(KEYCODE_ENTER)
+                }
+                else -> {
+                    current += c
+                    pending = true
+                }
+            }
+        }
+        flush()
+        value = current
+        return frames
+    }
+
+    private companion object {
+        const val KEYCODE_DEL = 67
+        const val KEYCODE_ENTER = 66
+    }
+}

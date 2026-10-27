@@ -108,6 +108,7 @@ private class AndroidTvConnection(
 ) : RemoteConnection {
     private val lock = Mutex()
     private var link: TvLink? = null
+    private val textField = AndroidTvTextField()
 
     override suspend fun open() {
         lock.withLock { withContext(Dispatchers.IO) { ensureLink() } }
@@ -142,13 +143,11 @@ private class AndroidTvConnection(
     }
 
     override suspend fun sendText(text: String) {
-        val frames = AndroidTvText.keyCodes(text).map(AndroidTvMessages::remoteKeyCode)
-        if (frames.isEmpty()) return
         lock.withLock {
             withContext(Dispatchers.IO) {
                 try {
                     val current = ensureLink()
-                    frames.forEach(current::send)
+                    textField.frames(text).forEach(current::send)
                 } catch (e: IOException) {
                     reset()
                     throw DeviceException("La télé ne répond pas. Est-elle allumée, sur le même Wi-Fi ?", e)
@@ -165,7 +164,7 @@ private class AndroidTvConnection(
         val identity =
             AndroidTvIdentity.fromCredentials(device.credentials)
                 ?: throw DeviceException("Cet appareil n'est pas appairé : supprimez-le puis ajoutez-le de nouveau.")
-        val opened = TvLink.open(device.host, AndroidTvMessages.REMOTE_PORT, identity)
+        val opened = TvLink.open(device.host, AndroidTvMessages.REMOTE_PORT, identity, textField::onMessage)
         try {
             opened.handshake()
         } catch (e: Exception) {
@@ -179,6 +178,7 @@ private class AndroidTvConnection(
     private fun reset() {
         link?.close()
         link = null
+        textField.clear()
     }
 }
 
@@ -186,6 +186,7 @@ private class AndroidTvConnection(
 private class TvLink(
     private val socket: SSLSocket,
     val serverCertificate: X509Certificate,
+    private val onMessage: (ProtoMessage) -> Unit = {},
 ) {
     private val input: InputStream = socket.inputStream
     private val output: OutputStream = socket.outputStream
@@ -238,6 +239,8 @@ private class TvLink(
                     )
                 ) {
                     send(AndroidTvMessages.remotePingResponse(message))
+                } else {
+                    onMessage(message)
                 }
             }
         } catch (_: Exception) {
@@ -263,6 +266,7 @@ private class TvLink(
             host: String,
             port: Int,
             identity: AndroidTvIdentity,
+            onMessage: (ProtoMessage) -> Unit = {},
         ): TvLink {
             val context = SSLContext.getInstance("TLS")
             context.init(identity.keyManagers(), PinnedTrust(pinnedKey = null).factory.trustManagers, SecureRandom())
@@ -272,7 +276,7 @@ private class TvLink(
                 socket.soTimeout = HANDSHAKE_TIMEOUT_MILLIS
                 socket.startHandshake()
                 val server = socket.session.peerCertificates.firstOrNull() as? X509Certificate ?: throw IOException()
-                return TvLink(socket, server)
+                return TvLink(socket, server, onMessage)
             } catch (e: IOException) {
                 runCatching { socket.close() }
                 throw DeviceException("Impossible de joindre la télé. Est-elle allumée, sur le même Wi-Fi ?", e)
