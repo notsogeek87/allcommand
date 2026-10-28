@@ -8,7 +8,12 @@ import com.lielu.allcommand.device.PairingSession
 import com.lielu.allcommand.device.RemoteConnection
 import com.lielu.allcommand.device.RemoteKey
 import com.lielu.allcommand.titanos.PinnedTrust
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -102,6 +107,10 @@ private class AndroidTvPairingSession(
 /**
  * Connexion de télécommande : s'ouvre au premier envoi, répond aux « ping » de la télé tant qu'elle reste ouverte,
  * et se rouvre une fois si elle est tombée (veille, changement de réseau).
+ *
+ * Une Android TV n'accepte qu'une télécommande à la fois : la liaison est relâchée après [IDLE_RELEASE_MILLIS]
+ * sans usage, pour que deux téléphones puissent se relayer au lieu de se couper l'un l'autre. Elle se rouvre
+ * toute seule à la touche suivante.
  */
 private class AndroidTvConnection(
     private val device: Device,
@@ -109,9 +118,12 @@ private class AndroidTvConnection(
     private val lock = Mutex()
     private var link: TvLink? = null
     private val textField = AndroidTvTextField()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var release: Job? = null
 
     override suspend fun open() {
         lock.withLock { withContext(Dispatchers.IO) { ensureLink() } }
+        scheduleRelease()
     }
 
     override suspend fun reconnect() {
@@ -121,6 +133,7 @@ private class AndroidTvConnection(
                 ensureLink()
             }
         }
+        scheduleRelease()
     }
 
     override suspend fun send(key: RemoteKey) {
@@ -140,6 +153,7 @@ private class AndroidTvConnection(
                 }
             }
         }
+        scheduleRelease()
     }
 
     override suspend fun sendText(text: String) {
@@ -154,9 +168,23 @@ private class AndroidTvConnection(
                 }
             }
         }
+        scheduleRelease()
     }
 
-    override fun close() = reset()
+    override fun close() {
+        release?.cancel()
+        reset()
+    }
+
+    /** Relance le compte à rebours : la liaison est fermée si personne ne s'en sert d'ici là. */
+    private fun scheduleRelease() {
+        release?.cancel()
+        release =
+            scope.launch {
+                delay(IDLE_RELEASE_MILLIS)
+                lock.withLock { reset() }
+            }
+    }
 
     private fun ensureLink(): TvLink {
         link?.takeIf { it.isAlive }?.let { return it }
@@ -179,6 +207,10 @@ private class AndroidTvConnection(
         link?.close()
         link = null
         textField.clear()
+    }
+
+    private companion object {
+        const val IDLE_RELEASE_MILLIS = 20_000L
     }
 }
 
