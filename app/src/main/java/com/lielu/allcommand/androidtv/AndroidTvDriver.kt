@@ -244,12 +244,17 @@ private class TvLink(
         socket.soTimeout = HANDSHAKE_TIMEOUT_MILLIS
         var active = false
         var messages = 0
+        var features = AndroidTvMessages.activeFeatures(null)
         while (!active && messages++ < MAX_HANDSHAKE_MESSAGES) {
             val message = receive()
             when {
-                message.has(AndroidTvMessages.REMOTE_CONFIGURE) -> send(AndroidTvMessages.remoteConfigure())
+                message.has(AndroidTvMessages.REMOTE_CONFIGURE) -> {
+                    features =
+                        AndroidTvMessages.activeFeatures(message.message(AndroidTvMessages.REMOTE_CONFIGURE)?.long(1))
+                    send(AndroidTvMessages.remoteConfigure(features))
+                }
                 message.has(AndroidTvMessages.REMOTE_SET_ACTIVE) -> {
-                    send(AndroidTvMessages.remoteSetActive())
+                    send(AndroidTvMessages.remoteSetActive(features))
                     active = true
                 }
                 message.has(

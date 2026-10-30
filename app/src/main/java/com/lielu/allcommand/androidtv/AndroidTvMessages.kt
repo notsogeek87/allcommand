@@ -17,7 +17,9 @@ internal object AndroidTvMessages {
     const val CODE_LENGTH = 6
     private const val ROLE_INPUT = 1L
     private const val DIRECTION_SHORT = 3L
-    private const val REMOTE_FEATURES = 622L
+
+    /** Ping, touches, saisie, allumage, volume, liens d'appli : ce que nous savons faire. */
+    private const val REMOTE_FEATURES = 615L
 
     // Champs de PairingMessage.
     const val PAIRING_REQUEST_ACK = 11
@@ -113,10 +115,20 @@ internal object AndroidTvMessages {
             hex.substring(it * 2, it * 2 + 2).toInt(16).toByte()
         }
 
-    fun remoteConfigure(): ByteArray =
+    /** Fonctionnalités actives : celles que la télé annonce [supported] et que nous gérons (`null` : pas d'annonce). */
+    fun activeFeatures(supported: Long?): Long =
+        if (supported == null ||
+            supported == 0L
+        ) {
+            REMOTE_FEATURES
+        } else {
+            supported and REMOTE_FEATURES
+        }
+
+    fun remoteConfigure(features: Long = REMOTE_FEATURES): ByteArray =
         ProtoWriter()
             .message(REMOTE_CONFIGURE) {
-                varint(1, REMOTE_FEATURES)
+                varint(1, features)
                 message(2) {
                     string(1, "allCommand")
                     string(2, "allCommand")
@@ -127,7 +139,8 @@ internal object AndroidTvMessages {
                 }
             }.toFrame()
 
-    fun remoteSetActive(): ByteArray = ProtoWriter().message(REMOTE_SET_ACTIVE) { varint(1, REMOTE_FEATURES) }.toFrame()
+    fun remoteSetActive(features: Long = REMOTE_FEATURES): ByteArray =
+        ProtoWriter().message(REMOTE_SET_ACTIVE) { varint(1, features) }.toFrame()
 
     fun remotePingResponse(request: ProtoMessage): ByteArray =
         ProtoWriter().message(9) { varint(1, request.message(REMOTE_PING_REQUEST)?.long(1) ?: 0L) }.toFrame()
@@ -135,7 +148,7 @@ internal object AndroidTvMessages {
     /** Champs de RemoteMessage liés à la saisie : la télé annonce un champ de texte actif (20 et 22). */
     const val REMOTE_IME_KEY_INJECT = 20
     const val REMOTE_IME_SHOW_REQUEST = 22
-    private const val REMOTE_IME_BATCH_EDIT = 21
+    const val REMOTE_IME_BATCH_EDIT = 21
 
     /** Remplace le contenu du champ de texte actif de la télé par [value] (curseur à la fin). */
     fun remoteImeInsert(

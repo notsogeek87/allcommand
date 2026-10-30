@@ -41,21 +41,29 @@ internal class AndroidTvTextField {
     @Volatile private var fieldCounter: Long? = null
 
     @Volatile private var value = ""
-    private var imeCounter = 0L
+
+    @Volatile private var imeCounter = 0L
 
     fun onMessage(message: ProtoMessage) {
+        // Comme la bibliothèque de référence (androidtvremote2) : les compteurs sont ceux du dernier
+        // RemoteImeBatchEdit envoyé par la télé, réutilisés tels quels (jamais incrémentés par nous).
+        message.message(AndroidTvMessages.REMOTE_IME_BATCH_EDIT)?.let {
+            imeCounter = it.long(1) ?: 0L
+            fieldCounter = it.long(2) ?: 0L
+        }
         val status =
             (
                 message.message(AndroidTvMessages.REMOTE_IME_KEY_INJECT)
                     ?: message.message(AndroidTvMessages.REMOTE_IME_SHOW_REQUEST)
             )?.message(2)
                 ?: return
-        fieldCounter = status.long(1) ?: 0L
+        if (message.message(AndroidTvMessages.REMOTE_IME_BATCH_EDIT) == null) fieldCounter = status.long(1) ?: 0L
         value = status.bytes(2)?.toString(Charsets.UTF_8).orEmpty()
     }
 
     fun clear() {
         fieldCounter = null
+        imeCounter = 0L
         value = ""
     }
 
@@ -68,7 +76,7 @@ internal class AndroidTvTextField {
 
         fun flush() {
             if (!pending) return
-            frames += AndroidTvMessages.remoteImeInsert(imeCounter++, counter, current)
+            frames += AndroidTvMessages.remoteImeInsert(imeCounter, counter, current)
             pending = false
         }
         for (c in text) {

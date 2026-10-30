@@ -89,4 +89,20 @@ class AndroidTvTextFieldTest {
         val frames = field.frames("\b\n")
         assertEquals(listOf(67L, 66L), frames.map { decode(it).message(10)?.long(1) })
     }
+
+    @Test
+    fun `les compteurs du RemoteImeBatchEdit de la tele sont reutilises tels quels`() {
+        val field = AndroidTvTextField()
+        val frame =
+            ProtoWriter()
+                .message(AndroidTvMessages.REMOTE_IME_BATCH_EDIT) {
+                    varint(1, 7)
+                    varint(2, 5)
+                }.toFrame()
+        field.onMessage(decode(frame))
+        val first = decode(field.frames("a").single()).message(21)
+        val second = decode(field.frames("b").single()).message(21)
+        assertEquals(listOf(7L, 7L), listOf(first?.long(1), second?.long(1)))
+        assertEquals(5L, first?.long(2))
+    }
 }
