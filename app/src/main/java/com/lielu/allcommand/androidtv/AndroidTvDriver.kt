@@ -121,6 +121,11 @@ private class AndroidTvConnection(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var release: Job? = null
 
+    @Volatile private var held = false
+
+    /** Faux tant que la liaison en cours n'a pas laissé à la télé le temps d'annoncer son champ de texte. */
+    private var announceAwaited = false
+
     override suspend fun open() {
         lock.withLock { withContext(Dispatchers.IO) { ensureLink() } }
         scheduleRelease()
@@ -156,11 +161,17 @@ private class AndroidTvConnection(
         scheduleRelease()
     }
 
+    override suspend fun holdOpen(hold: Boolean) {
+        held = hold
+        if (hold) open() else scheduleRelease()
+    }
+
     override suspend fun sendText(text: String) {
         lock.withLock {
             withContext(Dispatchers.IO) {
                 try {
                     val current = ensureLink()
+                    awaitTextField()
                     textField.frames(text).forEach(current::send)
                 } catch (e: IOException) {
                     reset()
@@ -176,9 +187,24 @@ private class AndroidTvConnection(
         reset()
     }
 
-    /** Relance le compte à rebours : la liaison est fermée si personne ne s'en sert d'ici là. */
+    /**
+     * Sur une liaison qui vient de s'ouvrir, la télé annonce le champ de texte actif juste après la poignée de main :
+     * on lui laisse un court délai, sans quoi la première saisie partirait avec des compteurs inconnus.
+     */
+    private suspend fun awaitTextField() {
+        if (announceAwaited) return
+        announceAwaited = true
+        var waited = 0L
+        while (!textField.isAnnounced && waited < ANNOUNCE_WAIT_MILLIS) {
+            delay(ANNOUNCE_POLL_MILLIS)
+            waited += ANNOUNCE_POLL_MILLIS
+        }
+    }
+
+    /** Relance le compte à rebours : la liaison est fermée si personne ne s'en sert d'ici là (sauf clavier affiché). */
     private fun scheduleRelease() {
         release?.cancel()
+        if (held) return
         release =
             scope.launch {
                 delay(IDLE_RELEASE_MILLIS)
@@ -207,10 +233,13 @@ private class AndroidTvConnection(
         link?.close()
         link = null
         textField.clear()
+        announceAwaited = false
     }
 
     private companion object {
         const val IDLE_RELEASE_MILLIS = 20_000L
+        const val ANNOUNCE_WAIT_MILLIS = 1_000L
+        const val ANNOUNCE_POLL_MILLIS = 50L
     }
 }
 
@@ -260,6 +289,7 @@ private class TvLink(
                 message.has(
                     AndroidTvMessages.REMOTE_PING_REQUEST,
                 ) -> send(AndroidTvMessages.remotePingResponse(message))
+                else -> onMessage(message)
             }
         }
         if (!active) throw IOException("Poignée de main incomplète")

@@ -45,19 +45,19 @@ class AndroidTvTextFieldTest {
     private fun decode(frame: ByteArray) = ProtoMessage.readFrame(java.io.ByteArrayInputStream(frame))
 
     @Test
-    fun `sans champ annonce la saisie retombe sur des touches`() {
-        val frames = AndroidTvTextField().frames("ab")
-        assertEquals(listOf(29L, 30L), frames.map { decode(it).message(10)?.long(1) })
+    fun `sans champ annonce la saisie part en modification de texte avec des compteurs a zero`() {
+        val edit = decode(AndroidTvTextField().frames("ab").single()).message(21)
+        assertEquals(listOf(0L, 0L), listOf(edit?.long(1), edit?.long(2)))
     }
 
     @Test
-    fun `avec un champ annonce le texte part en modification de texte`() {
+    fun `le champ annonce donne le texte deja present mais pas les compteurs`() {
         val field = AndroidTvTextField()
-        announce(field, counter = 3, value = "")
+        announce(field, counter = 3, value = "x")
         val edit = decode(field.frames("é").single()).message(21)
-        assertEquals(3L, edit?.long(2))
+        assertEquals(0L, edit?.long(2))
         assertEquals(
-            "é",
+            "xé",
             edit
                 ?.message(3)
                 ?.message(2)
@@ -100,6 +100,7 @@ class AndroidTvTextFieldTest {
                     varint(2, 5)
                 }.toFrame()
         field.onMessage(decode(frame))
+        announce(field, counter = 99, value = "")
         val first = decode(field.frames("a").single()).message(21)
         val second = decode(field.frames("b").single()).message(21)
         assertEquals(listOf(7L, 7L), listOf(first?.long(1), second?.long(1)))

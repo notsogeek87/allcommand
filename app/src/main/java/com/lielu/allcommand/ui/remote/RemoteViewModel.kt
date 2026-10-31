@@ -98,6 +98,9 @@ class RemoteViewModel(
 
     fun onText(text: String) = run { it.sendText(text) }
 
+    /** Clavier affiché : la liaison reste ouverte pour recevoir le champ de texte annoncé par la télé. */
+    fun onKeyboardVisible(visible: Boolean) = run { it.holdOpen(visible) }
+
     fun onRename(name: String) {
         val current = _device.value ?: return
         val trimmed = name.trim()

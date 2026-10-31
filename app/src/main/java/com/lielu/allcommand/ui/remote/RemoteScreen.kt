@@ -60,6 +60,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -189,7 +190,7 @@ fun RemoteScreen(
                 val repeat: (RemoteKey) -> Unit = { viewModel.onKey(it) }
                 when (tab) {
                     Tab.TV -> TvPanel(press, repeat)
-                    Tab.KEYBOARD -> KeyboardPanel(viewModel::onText, press)
+                    Tab.KEYBOARD -> KeyboardPanel(viewModel::onText, viewModel::onKeyboardVisible, press)
                 }
             }
         }
@@ -361,13 +362,19 @@ private fun TvPanel(
 @Composable
 private fun KeyboardPanel(
     onText: (String) -> Unit,
+    onVisible: (Boolean) -> Unit,
     press: (RemoteKey, HapticKind) -> Unit,
 ) {
     var text by remember { mutableStateOf("") }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
+    DisposableEffect(Unit) {
+        onVisible(true)
+        onDispose { onVisible(false) }
+    }
     Text(
-        "Ouvrez un champ de texte sur la télé (recherche…), puis tapez ici : le texte est envoyé au fil de la frappe.",
+        "Sélectionnez un champ de texte sur la télé (recherche…) pendant que ce clavier est affiché, puis tapez " +
+            "ici : le texte est envoyé au fil de la frappe.",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )

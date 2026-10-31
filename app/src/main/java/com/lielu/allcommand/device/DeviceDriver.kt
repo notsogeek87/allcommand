@@ -57,6 +57,12 @@ interface RemoteConnection {
     suspend fun sendText(text: String): Unit =
         throw DeviceException("La saisie de texte n'est pas encore prise en charge pour cet appareil.")
 
+    /**
+     * Garde la liaison ouverte tant que [hold] est vrai (clavier affiché) : l'appareil n'annonce son champ de texte
+     * qu'à une télécommande connectée au moment où le champ prend le focus.
+     */
+    suspend fun holdOpen(hold: Boolean) = Unit
+
     fun close()
 }
 
