@@ -36,14 +36,13 @@ internal object AndroidTvText {
  * Champ de texte actif d'une Android TV. Les touches-lettres sont ignorées par le clavier à l'écran (Gboard TV) : la
  * saisie passe par la modification de texte du protocole (`RemoteImeBatchEdit`), avec les compteurs du dernier
  * `RemoteImeBatchEdit` reçu de la télé, comme la bibliothèque de référence androidtvremote2 (0 tant qu'aucun
- * n'est reçu).
+ * n'est reçu). La télé INSÈRE le texte reçu au curseur : on n'envoie que les caractères nouveaux, jamais le texte
+ * déjà saisi (sinon il serait ajouté une seconde fois).
  */
 internal class AndroidTvTextField {
     @Volatile private var imeCounter = 0L
 
     @Volatile private var fieldCounter = 0L
-
-    @Volatile private var value = ""
 
     /** Vrai dès que la télé a annoncé un champ de texte sur la liaison en cours. */
     @Volatile var isAnnounced = false
@@ -53,61 +52,47 @@ internal class AndroidTvTextField {
         message.message(AndroidTvMessages.REMOTE_IME_BATCH_EDIT)?.let { edit ->
             imeCounter = edit.long(1) ?: 0L
             fieldCounter = edit.long(2) ?: 0L
-            edit
-                .message(3)
-                ?.message(2)
-                ?.bytes(3)
-                ?.let { value = it.toString(Charsets.UTF_8) }
             isAnnounced = true
         }
         // RemoteImeKeyInject / RemoteImeShowRequest : un champ prend le focus. Ses compteurs ne sont pas ceux à
-        // renvoyer (seul le RemoteImeBatchEdit les donne) ; on n'en retient que le texte déjà présent.
-        val status =
-            (
-                message.message(AndroidTvMessages.REMOTE_IME_KEY_INJECT)
-                    ?: message.message(AndroidTvMessages.REMOTE_IME_SHOW_REQUEST)
-            )?.message(2) ?: return
-        value = status.bytes(2)?.toString(Charsets.UTF_8).orEmpty()
-        isAnnounced = true
+        // renvoyer (seul le RemoteImeBatchEdit les donne).
+        if (message.message(AndroidTvMessages.REMOTE_IME_KEY_INJECT) != null ||
+            message.message(AndroidTvMessages.REMOTE_IME_SHOW_REQUEST) != null
+        ) {
+            isAnnounced = true
+        }
     }
 
     fun clear() {
         imeCounter = 0L
         fieldCounter = 0L
-        value = ""
         isAnnounced = false
     }
 
-    /** Trames à envoyer pour [text] (`\b` efface, `\n` valide). */
+    /** Trames à envoyer pour [text] (`\b` efface un caractère, `\n` valide). */
     fun frames(text: String): List<ByteArray> {
         val frames = mutableListOf<ByteArray>()
-        var current = value
-        var pending = false
+        val chunk = StringBuilder()
 
         fun flush() {
-            if (!pending) return
-            frames += AndroidTvMessages.remoteImeInsert(imeCounter, fieldCounter, current)
-            pending = false
+            if (chunk.isEmpty()) return
+            frames += AndroidTvMessages.remoteImeInsert(imeCounter, fieldCounter, chunk.toString())
+            chunk.clear()
         }
         for (c in text) {
             when (c) {
                 '\b' -> {
                     flush()
-                    current = current.dropLast(1)
                     frames += AndroidTvMessages.remoteKeyCode(KEYCODE_DEL)
                 }
                 '\n' -> {
                     flush()
                     frames += AndroidTvMessages.remoteKeyCode(KEYCODE_ENTER)
                 }
-                else -> {
-                    current += c
-                    pending = true
-                }
+                else -> chunk.append(c)
             }
         }
         flush()
-        value = current
         return frames
     }
 

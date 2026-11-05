@@ -83,6 +83,7 @@ import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -358,6 +359,19 @@ private fun TvPanel(
     }
 }
 
+/**
+ * Modification à envoyer à la télé pour passer de [old] à [new] : un effacement (`\b`) par caractère retiré après la
+ * partie commune, puis les caractères ajoutés. `null` si rien ne change (déplacement du curseur, etc.).
+ */
+internal fun textDelta(
+    old: String,
+    new: String,
+): String? {
+    val common = old.commonPrefixWith(new).length
+    val delta = "\b".repeat(old.length - common) + new.substring(common)
+    return delta.ifEmpty { null }
+}
+
 /** Clavier : le texte tapé ici est envoyé à la télé au fil de la frappe. */
 @Composable
 private fun KeyboardPanel(
@@ -383,14 +397,16 @@ private fun KeyboardPanel(
         onValueChange = { new ->
             val old = text
             text = new
-            when {
-                new.startsWith(old) -> onText(new.substring(old.length))
-                old.startsWith(new) -> onText("\b".repeat(old.length - new.length))
-            }
+            textDelta(old, new)?.let(onText)
         },
         label = { Text("Texte à envoyer") },
         singleLine = true,
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+        keyboardOptions =
+            KeyboardOptions(
+                capitalization = KeyboardCapitalization.None,
+                autoCorrectEnabled = false,
+                imeAction = ImeAction.Send,
+            ),
         keyboardActions =
             KeyboardActions(onSend = {
                 onText("\n")

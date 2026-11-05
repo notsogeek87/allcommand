@@ -50,36 +50,28 @@ class AndroidTvTextFieldTest {
         assertEquals(listOf(0L, 0L), listOf(edit?.long(1), edit?.long(2)))
     }
 
+    private fun text(frame: ByteArray) =
+        decode(frame)
+            .message(21)
+            ?.message(3)
+            ?.message(2)
+            ?.bytes(3)
+            ?.toString(Charsets.UTF_8)
+
     @Test
-    fun `le champ annonce donne le texte deja present mais pas les compteurs`() {
+    fun `seuls les caracteres nouveaux sont envoyes, jamais le texte deja saisi`() {
         val field = AndroidTvTextField()
-        announce(field, counter = 3, value = "x")
-        val edit = decode(field.frames("é").single()).message(21)
-        assertEquals(0L, edit?.long(2))
-        assertEquals(
-            "xé",
-            edit
-                ?.message(3)
-                ?.message(2)
-                ?.bytes(3)
-                ?.toString(Charsets.UTF_8),
-        )
+        announce(field, counter = 1, value = "x")
+        assertEquals("é", text(field.frames("é").single()))
+        assertEquals("ab", text(field.frames("ab").single()))
+        assertEquals("c", text(field.frames("c").single()))
     }
 
     @Test
-    fun `la frappe suivante complete le texte deja saisi`() {
-        val field = AndroidTvTextField()
-        announce(field, counter = 1, value = "")
-        field.frames("ab")
-        val edit = decode(field.frames("c").single()).message(21)
-        assertEquals(
-            "abc",
-            edit
-                ?.message(3)
-                ?.message(2)
-                ?.bytes(3)
-                ?.toString(Charsets.UTF_8),
-        )
+    fun `effacer puis taper envoie DEL puis seulement le nouveau texte`() {
+        val frames = AndroidTvTextField().frames("\b\bxy")
+        assertEquals(listOf(67L, 67L), frames.take(2).map { decode(it).message(10)?.long(1) })
+        assertEquals("xy", text(frames[2]))
     }
 
     @Test
