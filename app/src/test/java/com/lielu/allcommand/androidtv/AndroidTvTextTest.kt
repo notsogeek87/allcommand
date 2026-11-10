@@ -82,20 +82,58 @@ class AndroidTvTextFieldTest {
         assertEquals(listOf(67L, 66L), frames.map { decode(it).message(10)?.long(1) })
     }
 
+    private fun batchEdit(
+        ime: Long,
+        field: Long,
+    ) = decode(
+        ProtoWriter()
+            .message(AndroidTvMessages.REMOTE_IME_BATCH_EDIT) {
+                varint(1, ime)
+                varint(2, field)
+            }.toFrame(),
+    )
+
+    private fun counters(frame: ByteArray) = decode(frame).message(21).let { listOf(it?.long(1), it?.long(2)) }
+
     @Test
-    fun `les compteurs du RemoteImeBatchEdit de la tele sont reutilises tels quels`() {
+    fun `les compteurs viennent du champ qui a le focus`() {
         val field = AndroidTvTextField()
         val frame =
             ProtoWriter()
-                .message(AndroidTvMessages.REMOTE_IME_BATCH_EDIT) {
-                    varint(1, 7)
-                    varint(2, 5)
+                .message(AndroidTvMessages.REMOTE_IME_KEY_INJECT) {
+                    message(1) { varint(1, 12) }
+                    message(2) { varint(1, 34) }
                 }.toFrame()
         field.onMessage(decode(frame))
-        announce(field, counter = 99, value = "")
-        val first = decode(field.frames("a").single()).message(21)
-        val second = decode(field.frames("b").single()).message(21)
-        assertEquals(listOf(7L, 7L), listOf(first?.long(1), second?.long(1)))
-        assertEquals(5L, first?.long(2))
+        field.onMessage(batchEdit(ime = 7, field = 5))
+        assertEquals(listOf(12L, 34L), counters(field.frames("a").single()))
+    }
+
+    @Test
+    fun `le RemoteImeShowRequest donne le compteur du champ`() {
+        val field = AndroidTvTextField()
+        val frame =
+            ProtoWriter()
+                .message(AndroidTvMessages.REMOTE_IME_SHOW_REQUEST) {
+                    message(2) { varint(1, 9) }
+                }.toFrame()
+        field.onMessage(decode(frame))
+        field.onMessage(batchEdit(ime = 7, field = 5))
+        assertEquals(listOf(7L, 9L), counters(field.frames("a").single()))
+    }
+
+    @Test
+    fun `sans compteur du focus ceux du RemoteImeBatchEdit servent`() {
+        val field = AndroidTvTextField()
+        announce(field, counter = 0, value = "")
+        field.onMessage(batchEdit(ime = 7, field = 5))
+        assertEquals(listOf(7L, 5L), counters(field.frames("a").single()))
+        assertEquals(listOf(7L, 5L), counters(field.frames("b").single()))
+    }
+
+    @Test
+    fun `le curseur est place apres le texte insere`() {
+        val obj = decode(AndroidTvTextField().frames("abc").single()).message(21)?.message(3)?.message(2)
+        assertEquals(listOf(3L, 3L), listOf(obj?.long(1), obj?.long(2)))
     }
 }

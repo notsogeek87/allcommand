@@ -150,13 +150,13 @@ internal object AndroidTvMessages {
     const val REMOTE_IME_SHOW_REQUEST = 22
     const val REMOTE_IME_BATCH_EDIT = 21
 
-    /** Remplace le contenu du champ de texte actif de la télé par [value] (curseur à la fin). */
+    /** Insère [value] au curseur du champ de texte actif de la télé (curseur laissé après le texte). */
     fun remoteImeInsert(
         imeCounter: Long,
         fieldCounter: Long,
         value: String,
     ): ByteArray {
-        val cursor = (value.length - 1).coerceAtLeast(0).toLong()
+        val cursor = value.length.toLong()
         return ProtoWriter()
             .message(REMOTE_IME_BATCH_EDIT) {
                 varint(1, imeCounter)

@@ -34,31 +34,44 @@ internal object AndroidTvText {
 
 /**
  * Champ de texte actif d'une Android TV. Les touches-lettres sont ignorées par le clavier à l'écran (Gboard TV) : la
- * saisie passe par la modification de texte du protocole (`RemoteImeBatchEdit`), avec les compteurs du dernier
- * `RemoteImeBatchEdit` reçu de la télé, comme la bibliothèque de référence androidtvremote2 (0 tant qu'aucun
- * n'est reçu). La télé INSÈRE le texte reçu au curseur : on n'envoie que les caractères nouveaux, jamais le texte
- * déjà saisi (sinon il serait ajouté une seconde fois).
+ * saisie passe par la modification de texte du protocole (`RemoteImeBatchEdit`). Ses deux compteurs doivent être ceux
+ * du champ qui a le focus, sinon la télé ignore la saisie tout en affichant « Utilisez le clavier sur votre appareil
+ * mobile ». Comme la bibliothèque de référence androidtvremote2 (0.3.x), ils viennent du `RemoteImeKeyInject`
+ * (`app_info.counter`, `text_field_status.counter_field`) et du `RemoteImeShowRequest` (`counter_field`) ; ceux d'un
+ * `RemoteImeBatchEdit` de la télé ne servent qu'à défaut (0 tant que rien n'est reçu). La télé INSÈRE le texte reçu
+ * au curseur : on n'envoie que les caractères nouveaux, jamais le texte déjà saisi.
  */
 internal class AndroidTvTextField {
     @Volatile private var imeCounter = 0L
 
     @Volatile private var fieldCounter = 0L
 
+    @Volatile private var imeCounterFromFocus = false
+
+    @Volatile private var fieldCounterFromFocus = false
+
     /** Vrai dès que la télé a annoncé un champ de texte sur la liaison en cours. */
     @Volatile var isAnnounced = false
         private set
 
     fun onMessage(message: ProtoMessage) {
-        message.message(AndroidTvMessages.REMOTE_IME_BATCH_EDIT)?.let { edit ->
-            imeCounter = edit.long(1) ?: 0L
-            fieldCounter = edit.long(2) ?: 0L
+        message.message(AndroidTvMessages.REMOTE_IME_KEY_INJECT)?.let { inject ->
+            imeCounter = inject.message(KEY_INJECT_APP_INFO)?.long(APP_INFO_COUNTER) ?: 0L
+            fieldCounter = inject.message(KEY_INJECT_FIELD_STATUS)?.long(FIELD_STATUS_COUNTER) ?: 0L
+            imeCounterFromFocus = imeCounter != 0L
+            fieldCounterFromFocus = fieldCounter != 0L
             isAnnounced = true
         }
-        // RemoteImeKeyInject / RemoteImeShowRequest : un champ prend le focus. Ses compteurs ne sont pas ceux à
-        // renvoyer (seul le RemoteImeBatchEdit les donne).
-        if (message.message(AndroidTvMessages.REMOTE_IME_KEY_INJECT) != null ||
-            message.message(AndroidTvMessages.REMOTE_IME_SHOW_REQUEST) != null
-        ) {
+        message.message(AndroidTvMessages.REMOTE_IME_SHOW_REQUEST)?.let { show ->
+            show.message(SHOW_REQUEST_FIELD_STATUS)?.let { status ->
+                fieldCounter = status.long(FIELD_STATUS_COUNTER) ?: 0L
+                fieldCounterFromFocus = true
+            }
+            isAnnounced = true
+        }
+        message.message(AndroidTvMessages.REMOTE_IME_BATCH_EDIT)?.let { edit ->
+            if (!imeCounterFromFocus) imeCounter = edit.long(1) ?: 0L
+            if (!fieldCounterFromFocus) fieldCounter = edit.long(2) ?: 0L
             isAnnounced = true
         }
     }
@@ -66,6 +79,8 @@ internal class AndroidTvTextField {
     fun clear() {
         imeCounter = 0L
         fieldCounter = 0L
+        imeCounterFromFocus = false
+        fieldCounterFromFocus = false
         isAnnounced = false
     }
 
@@ -99,5 +114,13 @@ internal class AndroidTvTextField {
     private companion object {
         const val KEYCODE_DEL = 67
         const val KEYCODE_ENTER = 66
+
+        // RemoteImeKeyInject { app_info = 1; text_field_status = 2 }, RemoteAppInfo { counter = 1 },
+        // RemoteTextFieldStatus { counter_field = 1 }, RemoteImeShowRequest { remote_text_field_status = 2 }.
+        const val KEY_INJECT_APP_INFO = 1
+        const val KEY_INJECT_FIELD_STATUS = 2
+        const val APP_INFO_COUNTER = 1
+        const val FIELD_STATUS_COUNTER = 1
+        const val SHOW_REQUEST_FIELD_STATUS = 2
     }
 }

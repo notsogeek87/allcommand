@@ -36,5 +36,10 @@ Credentials stockés : `privateKey` (PKCS#8) et `certificate` (DER), en base64.
 4. `remote_ping_request` (8) toutes les quelques secondes → réponse `remote_ping_response` (9) avec la même
    valeur ; un fil dédié lit en continu, sinon la télé coupe.
 
-Texte : chaque caractère devient un `KEYCODE_*` (`AndroidTvText`) ; `\b` → `DEL`, `\n` → `ENTER` ; accents retirés,
-majuscules abaissées.
+Texte : modification de texte `remote_ime_batch_edit` (21) `{ ime_counter, field_counter, edit_info { insert=1,
+{ start=end=longueur, value } } }`, qui **insère** au curseur (on n'envoie que les caractères nouveaux) ; `\b` → touche
+`DEL`, `\n` → touche `ENTER`. Les compteurs sont ceux du champ qui a le focus, comme androidtvremote2 0.3.x :
+`remote_ime_key_inject` (20) → `app_info(1).counter(1)` et `text_field_status(2).counter_field(1)`,
+`remote_ime_show_request` (22) → `remote_text_field_status(2).counter_field(1)` ; ceux d'un `remote_ime_batch_edit`
+reçu ne servent qu'à défaut. Avec de mauvais compteurs, la télé affiche « Utilisez le clavier sur votre appareil
+mobile » mais ignore la saisie. Les touches-lettres (`KEYCODE_*`) sont ignorées par le clavier Google TV.
